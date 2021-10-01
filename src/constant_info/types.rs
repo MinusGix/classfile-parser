@@ -1,4 +1,4 @@
-use crate::impl_from;
+use crate::{impl_from_try_reverse};
 
 #[derive(Clone, Debug)]
 pub enum ConstantInfo {
@@ -22,20 +22,25 @@ pub enum ConstantInfo {
     /// as an unusable variant here.
     Unusable,
 }
-impl_from!(enum Utf8Constant => ConstantInfo::Utf8);
-impl_from!(enum IntegerConstant => ConstantInfo::Integer);
-impl_from!(enum FloatConstant => ConstantInfo::Float);
-impl_from!(enum LongConstant => ConstantInfo::Long);
-impl_from!(enum DoubleConstant => ConstantInfo::Double);
-impl_from!(enum ClassConstant => ConstantInfo::Class);
-impl_from!(enum StringConstant => ConstantInfo::String);
-impl_from!(enum FieldRefConstant => ConstantInfo::FieldRef);
-impl_from!(enum MethodRefConstant => ConstantInfo::MethodRef);
-impl_from!(enum InterfaceMethodRefConstant => ConstantInfo::InterfaceMethodRef);
-impl_from!(enum NameAndTypeConstant => ConstantInfo::NameAndType);
-impl_from!(enum MethodHandleConstant => ConstantInfo::MethodHandle);
-impl_from!(enum MethodTypeConstant => ConstantInfo::MethodType);
-impl_from!(enum InvokeDynamicConstant => ConstantInfo::InvokeDynamic);
+
+/// The constant was not of the correct type
+#[derive(Debug, Clone)]
+pub struct IncorrectConstant;
+
+impl_from_try_reverse!(enum Utf8Constant => ConstantInfo::Utf8; IncorrectConstant);
+impl_from_try_reverse!(enum IntegerConstant => ConstantInfo::Integer; IncorrectConstant);
+impl_from_try_reverse!(enum FloatConstant => ConstantInfo::Float; IncorrectConstant);
+impl_from_try_reverse!(enum LongConstant => ConstantInfo::Long; IncorrectConstant);
+impl_from_try_reverse!(enum DoubleConstant => ConstantInfo::Double; IncorrectConstant);
+impl_from_try_reverse!(enum ClassConstant => ConstantInfo::Class; IncorrectConstant);
+impl_from_try_reverse!(enum StringConstant => ConstantInfo::String; IncorrectConstant);
+impl_from_try_reverse!(enum FieldRefConstant => ConstantInfo::FieldRef; IncorrectConstant);
+impl_from_try_reverse!(enum MethodRefConstant => ConstantInfo::MethodRef; IncorrectConstant);
+impl_from_try_reverse!(enum InterfaceMethodRefConstant => ConstantInfo::InterfaceMethodRef; IncorrectConstant);
+impl_from_try_reverse!(enum NameAndTypeConstant => ConstantInfo::NameAndType; IncorrectConstant);
+impl_from_try_reverse!(enum MethodHandleConstant => ConstantInfo::MethodHandle; IncorrectConstant);
+impl_from_try_reverse!(enum MethodTypeConstant => ConstantInfo::MethodType; IncorrectConstant);
+impl_from_try_reverse!(enum InvokeDynamicConstant => ConstantInfo::InvokeDynamic; IncorrectConstant);
 // TODO: From Unusuable?
 
 #[derive(Clone, Debug)]
