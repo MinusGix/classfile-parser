@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 use attribute_info::AttributeInfo;
 use constant_info::ConstantInfo;
 use field_info::FieldInfo;
@@ -66,5 +68,16 @@ impl ConstantPool {
 
     pub fn get_mut(&mut self, i: u16) -> Option<&mut ConstantInfo> {
         self.pool.get_mut(i as usize)
+    }
+}
+impl Index<u16> for ConstantPool {
+    type Output = ConstantInfo;
+    fn index(&self, index: u16) -> &Self::Output {
+        &self.pool[index as usize]
+    }
+}
+impl IndexMut<u16> for ConstantPool {
+    fn index_mut(&mut self, index: u16) -> &mut Self::Output {
+        &mut self.pool[index as usize]
     }
 }
