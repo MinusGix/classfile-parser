@@ -49,15 +49,15 @@ fn test_attribute_bootstrap_methods() {
                             assert_eq!(bsm.bootstrap_method_ref, 36);
 
                             println!("{:?}", bsm);
-                            println!("\tmethod ref: {:?}", c.const_pool[36]);
-                            println!("\t\tdescriptor: {:?}", c.const_pool[53]);
-                            println!("\t\t\tclass_index: {:?}", c.const_pool[9]);
-                            println!("\t\t\t\tname_index: {:?}", c.const_pool[51]);
-                            println!("\t\t\t\t\tclass_index: {:?}", c.const_pool[64]);
-                            println!("\t\t\t\t\tname_and_type_index: {:?}", c.const_pool[65]);
-                            println!("\t\t\t\t\t\tname_index: {:?}", c.const_pool[30]);
-                            println!("\t\t\t\t\t\tdescriptor_index: {:?}", c.const_pool[31]);
-                            println!("\t\t\tname_and_type_index: {:?}", c.const_pool[66]);
+                            println!("\tmethod ref: {:?}", c.const_pool.get(36));
+                            println!("\t\tdescriptor: {:?}", c.const_pool.get(53));
+                            println!("\t\t\tclass_index: {:?}", c.const_pool.get(9));
+                            println!("\t\t\t\tname_index: {:?}", c.const_pool.get(51));
+                            println!("\t\t\t\t\tclass_index: {:?}", c.const_pool.get(64));
+                            println!("\t\t\t\t\tname_and_type_index: {:?}", c.const_pool.get(65));
+                            println!("\t\t\t\t\t\tname_index: {:?}", c.const_pool.get(30));
+                            println!("\t\t\t\t\t\tdescriptor_index: {:?}", c.const_pool.get(31));
+                            println!("\t\t\tname_and_type_index: {:?}", c.const_pool.get(66));
                             return;
                         }
                         _ => panic!("Failed to parse bootstrap method attribute"),

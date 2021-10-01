@@ -35,7 +35,7 @@ fn test_valid_class() {
                     "\t[{}] = const[{:?}] = {:?}",
                     interface_index,
                     i,
-                    c.const_pool[*i]
+                    c.const_pool.get(*i)
                 );
 
                 interface_index += 1;
@@ -47,7 +47,7 @@ fn test_valid_class() {
                     "\t[{}] Name(const[{:?}] = {:?}) - access({:?})",
                     field_index,
                     f.name_index,
-                    c.const_pool[f.name_index],
+                    c.const_pool.get(f.name_index),
                     f.access_flags
                 );
                 field_index += 1;
@@ -59,7 +59,7 @@ fn test_valid_class() {
                     "\t[{}] Name(const[{:?}] = {:?}) - access({:?})",
                     method_index,
                     m.name_index,
-                    c.const_pool[m.name_index],
+                    c.const_pool.get(m.name_index),
                     m.access_flags
                 );
                 method_index += 1;

@@ -55,7 +55,7 @@ pub fn class_parser(input: &[u8]) -> IResult<&[u8], ClassFile> {
                 super_class,
                 interfaces_count,
                 // TODO: Don't do this map. It is probably a no-op, but still.
-                interfaces: interfaces.into_iter().map(ConstantPoolIndexRaw).collect(),
+                interfaces: interfaces.into_iter().map(ConstantPoolIndexRaw::new).collect(),
                 fields_count,
                 fields,
                 methods_count,

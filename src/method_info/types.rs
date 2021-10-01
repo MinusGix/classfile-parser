@@ -1,12 +1,12 @@
 use attribute_info::AttributeInfo;
 
-use crate::ConstantPoolIndexRaw;
+use crate::{ConstantPoolIndexRaw, constant_info::Utf8Constant};
 
 #[derive(Clone, Debug)]
 pub struct MethodInfo {
     pub access_flags: MethodAccessFlags,
-    pub name_index: ConstantPoolIndexRaw,
-    pub descriptor_index: ConstantPoolIndexRaw,
+    pub name_index: ConstantPoolIndexRaw<Utf8Constant>,
+    pub descriptor_index: ConstantPoolIndexRaw<Utf8Constant>,
     pub attributes_count: u16,
     pub attributes: Vec<AttributeInfo>,
 }

@@ -1,9 +1,11 @@
-use std::{convert::{TryFrom, TryInto}, ops::{Index, IndexMut}};
+use std::{convert::{TryFrom, TryInto}, marker::PhantomData};
 
 use attribute_info::AttributeInfo;
 use constant_info::ConstantInfo;
 use field_info::FieldInfo;
 use method_info::MethodInfo;
+
+use crate::constant_info::ClassConstant;
 
 #[derive(Clone, Debug)]
 pub struct ClassFile {
@@ -15,7 +17,7 @@ pub struct ClassFile {
     pub this_class: u16,
     pub super_class: u16,
     pub interfaces_count: u16,
-    pub interfaces: Vec<ConstantPoolIndexRaw>,
+    pub interfaces: Vec<ConstantPoolIndexRaw<ClassConstant>>,
     pub fields_count: u16,
     pub fields: Vec<FieldInfo>,
     pub methods_count: u16,
@@ -38,30 +40,62 @@ bitflags! {
 }
 
 /// An index into the constant pool that hasn't been offset by -1
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ConstantPoolIndexRaw(pub u16);
+#[derive(Debug, PartialEq, Eq)]
+pub struct ConstantPoolIndexRaw<T>(pub u16, PhantomData<*const T>);
+impl<T> ConstantPoolIndexRaw<T> {
+    pub fn new(i: u16) -> Self {
+        Self(i, PhantomData)
+    }
+}
+impl<T> Clone for ConstantPoolIndexRaw<T> {
+    fn clone(&self) -> Self {
+        Self::new(self.0)
+    }
+}
+impl<T> Copy for ConstantPoolIndexRaw<T> {}
+impl<T: TryFrom<ConstantInfo>> ConstantPoolIndexRaw<T> {
+    pub fn into_generic(self) -> ConstantPoolIndexRaw<ConstantInfo> {
+        ConstantPoolIndexRaw(self.0, PhantomData)
+    }
+}
 
 /// A constant pool index that has already been offset by -1
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ConstantPoolIndex(pub u16);
+#[derive(Debug, PartialEq, Eq)]
+pub struct ConstantPoolIndex<T>(pub u16, PhantomData<*const T>);
+impl<T> ConstantPoolIndex<T> {
+    pub fn new(i: u16) -> Self {
+        Self(i, PhantomData)
+    }
+}
+impl<T> Clone for ConstantPoolIndex<T> {
+    fn clone(&self) -> Self {
+        Self::new(self.0)
+    }
+}
+impl<T> Copy for ConstantPoolIndex<T> {}
+impl<T: TryFrom<ConstantInfo>> ConstantPoolIndex<T> {
+    pub fn into_generic(self) -> ConstantPoolIndex<ConstantInfo> {
+        ConstantPoolIndex(self.0, PhantomData)
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct InvalidConstantPoolIndex;
 // we use TryFrom because the raw index could be 0, and we can't represent -1
-impl TryFrom<ConstantPoolIndexRaw> for ConstantPoolIndex {
+impl<T: TryFrom<ConstantInfo>> TryFrom<ConstantPoolIndexRaw<T>> for ConstantPoolIndex<T> {
     type Error = InvalidConstantPoolIndex;
 
-    fn try_from(value: ConstantPoolIndexRaw) -> Result<Self, Self::Error> {
+    fn try_from(value: ConstantPoolIndexRaw<T>) -> Result<Self, Self::Error> {
         value.0
             .checked_sub(1)
-            .map(ConstantPoolIndex)
+            .map(ConstantPoolIndex::<T>::new)
             .ok_or(InvalidConstantPoolIndex)
     }
 }
-impl TryFrom<u16> for ConstantPoolIndex {
+impl TryFrom<u16> for ConstantPoolIndex<ConstantInfo> {
     type Error = ();
     fn try_from(value: u16) -> Result<Self, Self::Error> {
-        Ok(ConstantPoolIndex(value))
+        Ok(ConstantPoolIndex::new(value))
     }
 }
 
@@ -92,13 +126,13 @@ impl ConstantPool {
         self.len() == 0
     }
 
-    pub fn get(&self, i: impl TryInto<ConstantPoolIndex>) -> Option<&ConstantInfo> {
-        let i: ConstantPoolIndex = i.try_into().ok()?;
+    pub fn get<T: TryFrom<ConstantInfo>>(&self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&ConstantInfo> {
+        let i: ConstantPoolIndex<T> = i.try_into().ok()?;
         self.pool.get(i.0 as usize)
     }
 
-    pub fn get_mut(&mut self, i: impl TryInto<ConstantPoolIndex>) -> Option<&mut ConstantInfo> {
-        let i: ConstantPoolIndex = i.try_into().ok()?;
+    pub fn get_mut<T: TryFrom<ConstantInfo>>(&mut self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&mut ConstantInfo> {
+        let i: ConstantPoolIndex<T> = i.try_into().ok()?;
         self.pool.get_mut(i.0 as usize)
     }
 
@@ -106,18 +140,5 @@ impl ConstantPool {
         self.pool.iter()
     }
 }
-impl<I: TryInto<ConstantPoolIndex>> Index<I> for ConstantPool 
-    where <I as TryInto<ConstantPoolIndex>>::Error: std::fmt::Debug {
-    type Output = ConstantInfo;
-    fn index(&self, index: I) -> &Self::Output {
-        let index: ConstantPoolIndex = index.try_into().expect("Invalid index into constant pool");
-        &self.pool[index.0 as usize]
-    }
-}
-impl<I: TryInto<ConstantPoolIndex>> IndexMut<I> for ConstantPool 
-    where <I as TryInto<ConstantPoolIndex>>::Error: std::fmt::Debug {
-    fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        let index: ConstantPoolIndex = index.try_into().expect("Invalid index into constant pool");
-        &mut self.pool[index.0 as usize]
-    }
-}
+
+// TODO: Implementing Index{Mut,} would be useful, but I failed to make it work properly
