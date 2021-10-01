@@ -4,6 +4,8 @@ use attribute_info::attribute_parser;
 
 use field_info::{FieldAccessFlags, FieldInfo};
 
+use crate::ConstantPoolIndexRaw;
+
 pub fn field_parser(input: &[u8]) -> IResult<&[u8], FieldInfo> {
     do_parse!(
         input,
@@ -14,8 +16,8 @@ pub fn field_parser(input: &[u8]) -> IResult<&[u8], FieldInfo> {
             >> attributes: count!(attribute_parser, attributes_count as usize)
             >> (FieldInfo {
                 access_flags: FieldAccessFlags::from_bits_truncate(access_flags),
-                name_index,
-                descriptor_index,
+                name_index: ConstantPoolIndexRaw(name_index),
+                descriptor_index: ConstantPoolIndexRaw(descriptor_index),
                 attributes_count,
                 attributes,
             })

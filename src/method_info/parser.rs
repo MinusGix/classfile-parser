@@ -4,6 +4,8 @@ use attribute_info::attribute_parser;
 
 use method_info::{MethodAccessFlags, MethodInfo};
 
+use crate::ConstantPoolIndexRaw;
+
 pub fn method_parser(input: &[u8]) -> IResult<&[u8], MethodInfo> {
     do_parse!(
         input,
@@ -14,8 +16,8 @@ pub fn method_parser(input: &[u8]) -> IResult<&[u8], MethodInfo> {
             >> attributes: count!(attribute_parser, attributes_count as usize)
             >> (MethodInfo {
                 access_flags: MethodAccessFlags::from_bits_truncate(access_flags),
-                name_index,
-                descriptor_index,
+                name_index: ConstantPoolIndexRaw(name_index),
+                descriptor_index: ConstantPoolIndexRaw(descriptor_index),
                 attributes_count,
                 attributes,
             })

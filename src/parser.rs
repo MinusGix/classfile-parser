@@ -6,7 +6,7 @@ use field_info::field_parser;
 use method_info::method_parser;
 use types::{ClassAccessFlags, ClassFile};
 
-use crate::ConstantPool;
+use crate::{ConstantPool, ConstantPoolIndexRaw};
 
 named!(magic_parser, tag!(&[0xCA, 0xFE, 0xBA, 0xBE]));
 
@@ -54,7 +54,8 @@ pub fn class_parser(input: &[u8]) -> IResult<&[u8], ClassFile> {
                 this_class,
                 super_class,
                 interfaces_count,
-                interfaces,
+                // TODO: Don't do this map. It is probably a no-op, but still.
+                interfaces: interfaces.into_iter().map(ConstantPoolIndexRaw).collect(),
                 fields_count,
                 fields,
                 methods_count,
