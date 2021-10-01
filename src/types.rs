@@ -69,6 +69,10 @@ impl ConstantPool {
     pub fn get_mut(&mut self, i: u16) -> Option<&mut ConstantInfo> {
         self.pool.get_mut(i as usize)
     }
+
+    pub fn iter(&self) -> std::slice::Iter<ConstantInfo> {
+        self.pool.iter()
+    }
 }
 impl Index<u16> for ConstantPool {
     type Output = ConstantInfo;
