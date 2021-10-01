@@ -4,7 +4,7 @@ use attribute_info::attribute_parser;
 
 use method_info::{MethodAccessFlags, MethodInfo};
 
-use crate::ConstantPoolIndexRaw;
+use crate::constant_pool::ConstantPoolIndexRaw;
 
 pub fn method_parser(input: &[u8]) -> IResult<&[u8], MethodInfo> {
     do_parse!(

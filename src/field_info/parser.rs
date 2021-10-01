@@ -4,7 +4,7 @@ use attribute_info::attribute_parser;
 
 use field_info::{FieldAccessFlags, FieldInfo};
 
-use crate::ConstantPoolIndexRaw;
+use crate::constant_pool::ConstantPoolIndexRaw;
 
 pub fn field_parser(input: &[u8]) -> IResult<&[u8], FieldInfo> {
     do_parse!(

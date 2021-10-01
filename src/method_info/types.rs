@@ -1,6 +1,6 @@
 use attribute_info::AttributeInfo;
 
-use crate::{ConstantPoolIndexRaw, constant_info::Utf8Constant};
+use crate::{constant_info::Utf8Constant, constant_pool::ConstantPoolIndexRaw};
 
 #[derive(Clone, Debug)]
 pub struct MethodInfo {

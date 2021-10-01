@@ -6,7 +6,7 @@ use field_info::field_parser;
 use method_info::method_parser;
 use types::{ClassAccessFlags, ClassFile};
 
-use crate::{ConstantPool, ConstantPoolIndexRaw};
+use crate::constant_pool::{ConstantPool, ConstantPoolIndexRaw};
 
 named!(magic_parser, tag!(&[0xCA, 0xFE, 0xBA, 0xBE]));
 

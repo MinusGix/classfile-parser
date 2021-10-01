@@ -20,6 +20,8 @@ pub mod code_attribute;
 pub mod parser;
 pub mod types;
 
+pub mod constant_pool;
+
 pub use parser::class_parser;
 pub use types::*;
 
