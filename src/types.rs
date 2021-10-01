@@ -126,14 +126,26 @@ impl ConstantPool {
         self.len() == 0
     }
 
-    pub fn get<T: TryFrom<ConstantInfo>>(&self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&ConstantInfo> {
+    pub fn get<T>(&self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&ConstantInfo> {
         let i: ConstantPoolIndex<T> = i.try_into().ok()?;
         self.pool.get(i.0 as usize)
     }
 
-    pub fn get_mut<T: TryFrom<ConstantInfo>>(&mut self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&mut ConstantInfo> {
+    pub fn get_mut<T>(&mut self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&mut ConstantInfo> {
         let i: ConstantPoolIndex<T> = i.try_into().ok()?;
         self.pool.get_mut(i.0 as usize)
+    }
+
+    pub fn get_t<'a, T>(&'a self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&'a T> where &'a T: TryFrom<&'a ConstantInfo> {
+        let i: ConstantPoolIndex<T> = i.try_into().ok()?;
+        let v: &'a ConstantInfo = self.pool.get(i.0 as usize)?;
+        <&'a T>::try_from(v).ok()
+    }
+
+    pub fn get_t_mut<'a, T>(&'a mut self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&'a mut T> where &'a mut T: TryFrom<&'a mut ConstantInfo> {
+        let i: ConstantPoolIndex<T> = i.try_into().ok()?;
+        let v: &'a mut ConstantInfo = self.pool.get_mut(i.0 as usize)?;
+        <&'a mut T>::try_from(v).ok()
     }
 
     pub fn iter(&self) -> std::slice::Iter<ConstantInfo> {
