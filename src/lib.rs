@@ -23,6 +23,8 @@ pub mod types;
 pub use parser::class_parser;
 pub use types::*;
 
+mod util;
+
 /// Attempt to parse a class file given a class file given a path to a class file
 /// (without .class extension)
 ///
