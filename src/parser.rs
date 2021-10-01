@@ -6,6 +6,8 @@ use field_info::field_parser;
 use method_info::method_parser;
 use types::{ClassAccessFlags, ClassFile};
 
+use crate::ConstantPool;
+
 named!(magic_parser, tag!(&[0xCA, 0xFE, 0xBA, 0xBE]));
 
 /// Parse a byte array into a ClassFile. This will probably be deprecated in 0.4.0 in as it returns
@@ -47,7 +49,7 @@ pub fn class_parser(input: &[u8]) -> IResult<&[u8], ClassFile> {
                 minor_version,
                 major_version,
                 const_pool_size,
-                const_pool,
+                const_pool: ConstantPool::new(const_pool),
                 access_flags: ClassAccessFlags::from_bits_truncate(access_flags),
                 this_class,
                 super_class,

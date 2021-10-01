@@ -8,7 +8,7 @@ pub struct ClassFile {
     pub minor_version: u16,
     pub major_version: u16,
     pub const_pool_size: u16,
-    pub const_pool: Vec<ConstantInfo>,
+    pub const_pool: ConstantPool,
     pub access_flags: ClassAccessFlags,
     pub this_class: u16,
     pub super_class: u16,
@@ -32,5 +32,39 @@ bitflags! {
         const SYNTHETIC = 0x1000;  //	Declared synthetic; not present in the source code.
         const ANNOTATION = 0x2000; //	Declared as an annotation type.
         const ENUM = 0x4000;       //	Declared as an enum type.
+    }
+}
+
+/// A wrapper structure around Vec to provide access
+#[derive(Clone, Debug)]
+pub struct ConstantPool {
+    pool: Vec<ConstantInfo>,
+}
+impl ConstantPool {
+    // Note: The casts from u16 to usize are always fine if the invariant holds,
+    // and different platforms won't have issues since usize is always at least a u16
+
+    /// The constant pool has an invariant that it holds at most u16 elements
+    pub(crate) fn new(pool: Vec<ConstantInfo>) -> Self {
+        assert!(pool.len() <= (u16::MAX as usize));
+        Self {
+            pool,
+        }
+    }
+
+    pub fn len(&self) -> u16 {
+        self.pool.len() as u16
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn get(&self, i: u16) -> Option<&ConstantInfo> {
+        self.pool.get(i as usize)
+    }
+
+    pub fn get_mut(&mut self, i: u16) -> Option<&mut ConstantInfo> {
+        self.pool.get_mut(i as usize)
     }
 }
