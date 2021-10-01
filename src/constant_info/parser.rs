@@ -2,6 +2,8 @@ use nom::{be_f32, be_f64, be_i32, be_i64, be_u16, be_u8, Err, ErrorKind};
 
 use constant_info::*;
 
+use crate::constant_pool::ConstantPoolIndexRaw;
+
 fn utf8_constant(input: &[u8]) -> Utf8Constant {
     let utf8_string =
         cesu8::from_java_cesu8(&input).unwrap_or_else(|_| String::from_utf8_lossy(&input));
@@ -57,7 +59,7 @@ named!(const_class<&[u8], ConstantInfo>, do_parse!(
     name_index: be_u16 >>
     (ConstantInfo::Class(
         ClassConstant {
-            name_index,
+            name_index: ConstantPoolIndexRaw::new(name_index),
         }
     ))
 ));
@@ -66,7 +68,7 @@ named!(const_string<&[u8], ConstantInfo>, do_parse!(
     string_index: be_u16 >>
     (ConstantInfo::String(
         StringConstant {
-            string_index,
+            string_index: ConstantPoolIndexRaw::new(string_index),
         }
     ))
 ));
@@ -76,8 +78,8 @@ named!(const_field_ref<&[u8], ConstantInfo>, do_parse!(
     name_and_type_index: be_u16 >>
     (ConstantInfo::FieldRef(
         FieldRefConstant {
-            class_index,
-            name_and_type_index,
+            class_index: ConstantPoolIndexRaw::new(class_index),
+            name_and_type_index: ConstantPoolIndexRaw::new(name_and_type_index),
         }
     ))
 ));
@@ -87,8 +89,8 @@ named!(const_method_ref<&[u8], ConstantInfo>, do_parse!(
     name_and_type_index: be_u16 >>
     (ConstantInfo::MethodRef(
         MethodRefConstant {
-            class_index,
-            name_and_type_index,
+            class_index: ConstantPoolIndexRaw::new(class_index),
+            name_and_type_index: ConstantPoolIndexRaw::new(name_and_type_index),
         }
     ))
 ));
@@ -98,8 +100,8 @@ named!(const_interface_method_ref<&[u8], ConstantInfo>, do_parse!(
     name_and_type_index: be_u16 >>
     (ConstantInfo::InterfaceMethodRef(
         InterfaceMethodRefConstant {
-            class_index,
-            name_and_type_index,
+            class_index: ConstantPoolIndexRaw::new(class_index),
+            name_and_type_index: ConstantPoolIndexRaw::new(name_and_type_index),
         }
     ))
 ));
@@ -109,8 +111,8 @@ named!(const_name_and_type<&[u8], ConstantInfo>, do_parse!(
     descriptor_index: be_u16 >>
     (ConstantInfo::NameAndType(
         NameAndTypeConstant {
-            name_index,
-            descriptor_index,
+            name_index: ConstantPoolIndexRaw::new(name_index),
+            descriptor_index: ConstantPoolIndexRaw::new(descriptor_index),
         }
     ))
 ));
@@ -121,7 +123,7 @@ named!(const_method_handle<&[u8], ConstantInfo>, do_parse!(
     (ConstantInfo::MethodHandle(
         MethodHandleConstant {
             reference_kind,
-            reference_index,
+            reference_index: ConstantPoolIndexRaw::new(reference_index),
         }
     ))
 ));
@@ -130,7 +132,7 @@ named!(const_method_type<&[u8], ConstantInfo>, do_parse!(
     descriptor_index: be_u16 >>
     (ConstantInfo::MethodType(
         MethodTypeConstant {
-            descriptor_index,
+            descriptor_index: ConstantPoolIndexRaw::new(descriptor_index),
         }
     ))
 ));

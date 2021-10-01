@@ -1,4 +1,4 @@
-use crate::{impl_from_try_reverse};
+use crate::{constant_pool::ConstantPoolIndexRaw, impl_from_try_reverse};
 
 #[derive(Clone, Debug)]
 pub enum ConstantInfo {
@@ -71,47 +71,53 @@ pub struct DoubleConstant {
 
 #[derive(Clone, Debug)]
 pub struct ClassConstant {
-    pub name_index: u16,
+    pub name_index: ConstantPoolIndexRaw<Utf8Constant>,
 }
 
 #[derive(Clone, Debug)]
 pub struct StringConstant {
-    pub string_index: u16,
+    pub string_index: ConstantPoolIndexRaw<Utf8Constant>,
 }
 
 #[derive(Clone, Debug)]
 pub struct FieldRefConstant {
-    pub class_index: u16,
-    pub name_and_type_index: u16,
+    /// Must be class or interface
+    pub class_index: ConstantPoolIndexRaw<ClassConstant>,
+    /// Must be a field or method descriptor
+    pub name_and_type_index: ConstantPoolIndexRaw<NameAndTypeConstant>,
 }
 
 #[derive(Clone, Debug)]
 pub struct MethodRefConstant {
-    pub class_index: u16,
-    pub name_and_type_index: u16,
+    /// Must be class
+    pub class_index: ConstantPoolIndexRaw<ClassConstant>,
+    /// Must be for <init> method ref
+    pub name_and_type_index: ConstantPoolIndexRaw<NameAndTypeConstant>,
 }
 
 #[derive(Clone, Debug)]
 pub struct InterfaceMethodRefConstant {
-    pub class_index: u16,
-    pub name_and_type_index: u16,
+    /// Must be interface
+    pub class_index: ConstantPoolIndexRaw<ClassConstant>,
+    pub name_and_type_index: ConstantPoolIndexRaw<NameAndTypeConstant>,
 }
 
 #[derive(Clone, Debug)]
 pub struct NameAndTypeConstant {
-    pub name_index: u16,
-    pub descriptor_index: u16,
+    pub name_index: ConstantPoolIndexRaw<Utf8Constant>,
+    pub descriptor_index: ConstantPoolIndexRaw<Utf8Constant>,
 }
 
 #[derive(Clone, Debug)]
 pub struct MethodHandleConstant {
     pub reference_kind: u8,
-    pub reference_index: u16,
+    // We don't know the exact type for this, since it depends upon reference kind
+    pub reference_index: ConstantPoolIndexRaw<ConstantInfo>,
 }
 
 #[derive(Clone, Debug)]
 pub struct MethodTypeConstant {
-    pub descriptor_index: u16,
+    pub descriptor_index: ConstantPoolIndexRaw<Utf8Constant>,
 }
 
 #[derive(Clone, Debug)]
