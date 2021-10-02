@@ -1,6 +1,8 @@
+use crate::{constant_info::Utf8Constant, constant_pool::ConstantPoolIndexRaw};
+
 #[derive(Clone, Debug)]
 pub struct AttributeInfo {
-    pub attribute_name_index: u16,
+    pub attribute_name_index: ConstantPoolIndexRaw<Utf8Constant>,
     pub attribute_length: u32,
     pub info: Vec<u8>,
 }

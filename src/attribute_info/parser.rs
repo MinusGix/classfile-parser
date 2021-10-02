@@ -3,6 +3,8 @@ use nom::{be_u16, be_u32, be_u8, Err, ErrorKind};
 use attribute_info::types::StackMapFrame::*;
 use attribute_info::*;
 
+use crate::constant_pool::ConstantPoolIndexRaw;
+
 pub fn attribute_parser(input: &[u8]) -> Result<(&[u8], AttributeInfo), Err<&[u8]>> {
     do_parse!(
         input,
@@ -10,7 +12,7 @@ pub fn attribute_parser(input: &[u8]) -> Result<(&[u8], AttributeInfo), Err<&[u8
             >> attribute_length: be_u32
             >> info: take!(attribute_length)
             >> (AttributeInfo {
-                attribute_name_index,
+                attribute_name_index: ConstantPoolIndexRaw::new(attribute_name_index),
                 attribute_length,
                 info: info.to_owned(),
             })

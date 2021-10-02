@@ -51,8 +51,8 @@ pub fn class_parser(input: &[u8]) -> IResult<&[u8], ClassFile> {
                 const_pool_size,
                 const_pool: ConstantPool::new(const_pool),
                 access_flags: ClassAccessFlags::from_bits_truncate(access_flags),
-                this_class,
-                super_class,
+                this_class: ConstantPoolIndexRaw::new(this_class),
+                super_class: ConstantPoolIndexRaw::new(super_class),
                 interfaces_count,
                 // TODO: Don't do this map. It is probably a no-op, but still.
                 interfaces: interfaces.into_iter().map(ConstantPoolIndexRaw::new).collect(),
