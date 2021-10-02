@@ -21,6 +21,7 @@ pub mod parser;
 pub mod types;
 
 pub mod constant_pool;
+pub mod descriptor;
 
 pub use parser::class_parser;
 pub use types::*;
