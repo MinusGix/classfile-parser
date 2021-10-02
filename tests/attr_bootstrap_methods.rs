@@ -11,7 +11,7 @@ fn test_attribute_bootstrap_methods() {
         "../java-assets/compiled-classes/BootstrapMethods.class"
     )) {
         Result::Ok((_, c)) => {
-            println!("Valid class file, version {},{} const_pool({}), this=const[{}], super=const[{}], interfaces({}), fields({}), methods({}), attributes({}), access({:?})", c.major_version, c.minor_version, c.const_pool_size, c.this_class, c.super_class, c.interfaces_count, c.fields_count, c.methods_count, c.attributes_count, c.access_flags);
+            println!("Valid class file, version {},{} const_pool({}), this=const[{:?}], super=const[{:?}], interfaces({}), fields({}), methods({}), attributes({}), access({:?})", c.major_version, c.minor_version, c.const_pool_size, c.this_class, c.super_class, c.interfaces_count, c.fields_count, c.methods_count, c.attributes_count, c.access_flags);
 
             let mut bootstrap_method_const_index = 0;
 
@@ -41,7 +41,7 @@ fn test_attribute_bootstrap_methods() {
             );
 
             for (_, attribute_item) in c.attributes.iter().enumerate() {
-                if attribute_item.attribute_name_index == bootstrap_method_const_index {
+                if attribute_item.attribute_name_index.0 == bootstrap_method_const_index {
                     match bootstrap_methods_attribute_parser(&attribute_item.info) {
                         Result::Ok((_, bsma)) => {
                             assert_eq!(bsma.num_bootstrap_methods, 1);

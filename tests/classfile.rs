@@ -10,7 +10,7 @@ fn test_valid_class() {
     let res = class_parser(valid_class);
     match res {
         Result::Ok((_, c)) => {
-            println!("Valid class file, version {},{} const_pool({}), this=const[{}], super=const[{}], interfaces({}), fields({}), methods({}), attributes({}), access({:?})", c.major_version, c.minor_version, c.const_pool_size, c.this_class, c.super_class, c.interfaces_count, c.fields_count, c.methods_count, c.attributes_count, c.access_flags);
+            println!("Valid class file, version {},{} const_pool({}), this=const[{:?}], super=const[{:?}], interfaces({}), fields({}), methods({}), attributes({}), access({:?})", c.major_version, c.minor_version, c.const_pool_size, c.this_class, c.super_class, c.interfaces_count, c.fields_count, c.methods_count, c.attributes_count, c.access_flags);
 
             let mut code_const_index = 0;
 
@@ -65,7 +65,7 @@ fn test_valid_class() {
                 method_index += 1;
 
                 for a in &m.attributes {
-                    if a.attribute_name_index == code_const_index {
+                    if a.attribute_name_index.0 == code_const_index {
                         println!("\t\tCode attr found, len = {}", a.attribute_length);
                         let code_result =
                             classfile_parser::attribute_info::code_attribute_parser(&a.info);
