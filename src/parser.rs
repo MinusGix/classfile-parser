@@ -1,10 +1,10 @@
 use nom::*;
 
-use attribute_info::attribute_parser;
-use constant_info::constant_parser;
-use field_info::field_parser;
-use method_info::method_parser;
-use types::{ClassAccessFlags, ClassFile};
+use crate::attribute_info::attribute_parser;
+use crate::constant_info::constant_parser;
+use crate::field_info::field_parser;
+use crate::method_info::method_parser;
+use crate::types::{ClassAccessFlags, ClassFile};
 
 use crate::constant_pool::{ConstantPool, ConstantPoolIndexRaw};
 

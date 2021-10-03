@@ -1,6 +1,6 @@
-use attribute_info::AttributeInfo;
-use field_info::FieldInfo;
-use method_info::MethodInfo;
+use crate::attribute_info::AttributeInfo;
+use crate::field_info::FieldInfo;
+use crate::method_info::MethodInfo;
 
 use crate::{constant_info::ClassConstant, constant_pool::{ConstantPool, ConstantPoolIndexRaw}};
 

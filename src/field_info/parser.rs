@@ -1,8 +1,8 @@
 use nom::{be_u16, IResult};
 
-use attribute_info::attribute_parser;
+use crate::attribute_info::attribute_parser;
 
-use field_info::{FieldAccessFlags, FieldInfo};
+use crate::field_info::{FieldAccessFlags, FieldInfo};
 
 use crate::constant_pool::ConstantPoolIndexRaw;
 

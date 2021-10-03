@@ -1,4 +1,4 @@
-use attribute_info::AttributeInfo;
+use crate::attribute_info::AttributeInfo;
 
 use crate::{constant_info::Utf8Constant, constant_pool::ConstantPoolIndexRaw};
 

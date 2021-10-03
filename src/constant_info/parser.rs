@@ -1,6 +1,6 @@
 use nom::{be_f32, be_f64, be_i32, be_i64, be_u16, be_u8, Err, ErrorKind};
 
-use constant_info::*;
+use crate::constant_info::*;
 
 use crate::constant_pool::ConstantPoolIndexRaw;
 
