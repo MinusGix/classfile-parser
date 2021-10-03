@@ -5,7 +5,7 @@ use crate::method_info::MethodInfo;
 use crate::{constant_info::ClassConstant, constant_pool::{ConstantPool, ConstantPoolIndexRaw}};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ClassFileVersion {
+pub enum ClassFileJavaVersion {
     /// The major version for 1.0.2 and 1.1 is the same, so unless there's
     /// specific observable differences, they appear the same.
     V1_1 = 45,
@@ -22,8 +22,8 @@ pub enum ClassFileVersion {
     V12 = 56,
     V13 = 57,
 }
-impl ClassFileVersion {
-    pub fn from_version(major_version: u16, _minor_version: u16) -> Option<ClassFileVersion> {
+impl ClassFileJavaVersion {
+    pub fn from_version(major_version: u16, _minor_version: u16) -> Option<ClassFileJavaVersion> {
         Some(match major_version {
             45 => Self::V1_1,
             46 => Self::V1_2,
@@ -43,10 +43,20 @@ impl ClassFileVersion {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ClassFileVersion {
+    pub major: u16,
+    pub minor: u16,
+}
+impl ClassFileVersion{
+    pub fn into_java_version(self) -> Option<ClassFileJavaVersion> {
+        ClassFileJavaVersion::from_version(self.major, self.minor)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ClassFile {
-    pub minor_version: u16,
-    pub major_version: u16,
+    pub version: ClassFileVersion,
     pub const_pool_size: u16,
     pub const_pool: ConstantPool,
     pub access_flags: ClassAccessFlags,
@@ -60,11 +70,6 @@ pub struct ClassFile {
     pub methods: Vec<MethodInfo>,
     pub attributes_count: u16,
     pub attributes: Vec<AttributeInfo>,
-}
-impl ClassFile {
-    pub fn version(&self) -> Option<ClassFileVersion> {
-        ClassFileVersion::from_version(self.major_version, self.minor_version)
-    }
 }
 
 bitflags! {

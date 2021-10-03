@@ -1,5 +1,6 @@
 use nom::*;
 
+use crate::ClassFileVersion;
 use crate::attribute_info::attribute_parser;
 use crate::constant_info::constant_parser;
 use crate::field_info::field_parser;
@@ -46,8 +47,10 @@ pub fn class_parser(input: &[u8]) -> IResult<&[u8], ClassFile> {
             >> attributes_count: be_u16
             >> attributes: count!(attribute_parser, attributes_count as usize)
             >> (ClassFile {
-                minor_version,
-                major_version,
+                version: ClassFileVersion {
+                    major: major_version,
+                    minor: minor_version,
+                },
                 const_pool_size,
                 const_pool: ConstantPool::new(const_pool),
                 access_flags: ClassAccessFlags::from_bits_truncate(access_flags),
