@@ -9,6 +9,10 @@ impl<T> ConstantPoolIndexRaw<T> {
     pub fn new(i: u16) -> Self {
         Self(i, PhantomData)
     }
+
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
 }
 impl<T> Clone for ConstantPoolIndexRaw<T> {
     fn clone(&self) -> Self {
