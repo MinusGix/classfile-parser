@@ -43,7 +43,7 @@ impl ClassFileJavaVersion {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClassFileVersion {
     pub major: u16,
     pub minor: u16,
