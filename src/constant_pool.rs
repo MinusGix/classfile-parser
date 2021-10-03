@@ -59,6 +59,14 @@ impl<T: TryFrom<ConstantInfo>> TryFrom<ConstantPoolIndexRaw<T>> for ConstantPool
             .ok_or(InvalidConstantPoolIndex)
     }
 }
+impl<'a, T: TryFrom<ConstantInfo>> TryFrom<&'a ConstantPoolIndexRaw<T>> for ConstantPoolIndex<T> {
+    type Error = InvalidConstantPoolIndex;
+
+    fn try_from(value: &'a ConstantPoolIndexRaw<T>) -> Result<Self, Self::Error> {
+        let value = *value;
+        ConstantPoolIndex::<T>::try_from(value)
+    }
+}
 impl TryFrom<u16> for ConstantPoolIndex<ConstantInfo> {
     type Error = ();
     fn try_from(value: u16) -> Result<Self, Self::Error> {
