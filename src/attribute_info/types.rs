@@ -1,4 +1,4 @@
-use crate::{constant_info::Utf8Constant, constant_pool::ConstantPoolIndexRaw};
+use crate::{constant_info::{ClassConstant, Utf8Constant}, constant_pool::ConstantPoolIndexRaw};
 
 #[derive(Clone, Debug)]
 pub struct AttributeInfo {
@@ -87,7 +87,7 @@ pub struct StackMapTableAttribute {
 #[derive(Clone, Debug)]
 pub struct ExceptionsAttribute {
     pub exception_table_length: u16,
-    pub exception_table: Vec<u16>,
+    pub exception_table: Vec<ConstantPoolIndexRaw<ClassConstant>>,
 }
 
 #[derive(Clone, Debug)]
