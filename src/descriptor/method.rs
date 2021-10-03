@@ -71,8 +71,24 @@ impl MethodDescriptor {
             return_type,
         })
     }
+}
+impl std::fmt::Display for MethodDescriptor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("(")?;
+        for (i, param) in self.parameter_types.iter().enumerate() {
+            f.write_fmt(format_args!("{}", param))?;
+            if (i + 1) != self.parameter_types.len() {
+                f.write_str(", ")?;
+            }
+        }
+        f.write_str(")")?;
 
-    // TODO: A method to turn the descriptor back into a string
+        if let Some(ret) = &self.return_type {
+            f.write_fmt(format_args!(": {}", ret))?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
