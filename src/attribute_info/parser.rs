@@ -212,7 +212,9 @@ pub fn exceptions_attribute_parser(
             >> exception_table: count!(be_u16, exception_table_length as usize)
             >> (ExceptionsAttribute {
                 exception_table_length,
-                exception_table,
+                // TODO: parse directly as type
+                exception_table: exception_table
+                    .into_iter().map(ConstantPoolIndexRaw::new).collect(),
             })
     )
 }
