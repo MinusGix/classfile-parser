@@ -127,5 +127,11 @@ impl ConstantPool {
         self.pool.iter()
     }
 }
+/// This is primarily for swapping it out
+impl Default for ConstantPool {
+    fn default() -> Self {
+        Self::new(Vec::new())
+    }
+}
 
 // TODO: Implementing Index{Mut,} would be useful, but I failed to make it work properly
