@@ -16,10 +16,14 @@ pub struct AttributeInfo {
 
 #[derive(Clone, Debug)]
 pub struct ExceptionEntry {
+    /// The code range at which the exception handler is active and waiting for an exception
     pub start_pc: InstructionIndex,
     pub end_pc: InstructionIndex,
-    pub handler_pc: u16,
-    pub catch_type: u16,
+    /// The location of the exception handler code
+    pub handler_pc: InstructionIndex,
+    /// The class of exception that it catches.
+    /// If it is zero, then it catches all exceptions.
+    pub catch_type: ConstantPoolIndexRaw<ClassConstant>,
 }
 
 #[derive(Clone, Debug)]
