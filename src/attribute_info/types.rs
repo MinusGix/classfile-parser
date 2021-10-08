@@ -1,4 +1,11 @@
-use crate::{constant_info::{ClassConstant, Utf8Constant}, constant_pool::ConstantPoolIndexRaw};
+use crate::{
+    constant_info::{ClassConstant, Utf8Constant},
+    constant_pool::ConstantPoolIndexRaw,
+};
+
+/// An index into the code that should be an index
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InstructionIndex(pub u16);
 
 #[derive(Clone, Debug)]
 pub struct AttributeInfo {
@@ -9,8 +16,8 @@ pub struct AttributeInfo {
 
 #[derive(Clone, Debug)]
 pub struct ExceptionEntry {
-    pub start_pc: u16,
-    pub end_pc: u16,
+    pub start_pc: InstructionIndex,
+    pub end_pc: InstructionIndex,
     pub handler_pc: u16,
     pub catch_type: u16,
 }

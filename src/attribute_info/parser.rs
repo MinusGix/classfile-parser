@@ -27,8 +27,8 @@ pub fn exception_entry_parser(input: &[u8]) -> Result<(&[u8], ExceptionEntry), E
             >> handler_pc: be_u16
             >> catch_type: be_u16
             >> (ExceptionEntry {
-                start_pc,
-                end_pc,
+                start_pc: InstructionIndex(start_pc),
+                end_pc: InstructionIndex(end_pc),
                 handler_pc,
                 catch_type,
             })
@@ -214,7 +214,9 @@ pub fn exceptions_attribute_parser(
                 exception_table_length,
                 // TODO: parse directly as type
                 exception_table: exception_table
-                    .into_iter().map(ConstantPoolIndexRaw::new).collect(),
+                    .into_iter()
+                    .map(ConstantPoolIndexRaw::new)
+                    .collect(),
             })
     )
 }
