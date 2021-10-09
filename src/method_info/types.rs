@@ -2,7 +2,7 @@ use crate::attribute_info::AttributeInfo;
 
 use crate::{constant_info::Utf8Constant, constant_pool::ConstantPoolIndexRaw};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MethodInfo {
     pub access_flags: MethodAccessFlags,
     pub name_index: ConstantPoolIndexRaw<Utf8Constant>,

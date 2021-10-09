@@ -7,7 +7,7 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InstructionIndex(pub u16);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AttributeInfo {
     pub attribute_name_index: ConstantPoolIndexRaw<Utf8Constant>,
     pub attribute_length: u32,

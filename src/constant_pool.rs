@@ -1,9 +1,12 @@
-use std::{convert::{TryFrom, TryInto}, marker::PhantomData};
+use std::{
+    convert::{TryFrom, TryInto},
+    marker::PhantomData,
+};
 
 use crate::constant_info::ConstantInfo;
 
 /// An index into the constant pool that hasn't been offset by -1
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct ConstantPoolIndexRaw<T>(pub u16, PhantomData<*const T>);
 impl<T> ConstantPoolIndexRaw<T> {
     pub fn new(i: u16) -> Self {
@@ -12,6 +15,12 @@ impl<T> ConstantPoolIndexRaw<T> {
 
     pub fn is_zero(&self) -> bool {
         self.0 == 0
+    }
+}
+impl<T> Eq for ConstantPoolIndexRaw<T> {}
+impl<T> PartialEq for ConstantPoolIndexRaw<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
     }
 }
 impl<T> Clone for ConstantPoolIndexRaw<T> {
@@ -53,7 +62,8 @@ impl<T: TryFrom<ConstantInfo>> TryFrom<ConstantPoolIndexRaw<T>> for ConstantPool
     type Error = InvalidConstantPoolIndex;
 
     fn try_from(value: ConstantPoolIndexRaw<T>) -> Result<Self, Self::Error> {
-        value.0
+        value
+            .0
             .checked_sub(1)
             .map(ConstantPoolIndex::<T>::new)
             .ok_or(InvalidConstantPoolIndex)
@@ -88,9 +98,7 @@ impl ConstantPool {
     /// The constant pool has an invariant that it holds at most u16 elements
     pub(crate) fn new(pool: Vec<ConstantInfo>) -> Self {
         assert!(pool.len() <= (u16::MAX as usize));
-        Self {
-            pool,
-        }
+        Self { pool }
     }
 
     pub fn len(&self) -> u16 {
@@ -106,18 +114,30 @@ impl ConstantPool {
         self.pool.get(i.0 as usize)
     }
 
-    pub fn get_mut<T>(&mut self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&mut ConstantInfo> {
+    pub fn get_mut<T>(
+        &mut self,
+        i: impl TryInto<ConstantPoolIndex<T>>,
+    ) -> Option<&mut ConstantInfo> {
         let i: ConstantPoolIndex<T> = i.try_into().ok()?;
         self.pool.get_mut(i.0 as usize)
     }
 
-    pub fn get_t<'a, T>(&'a self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&'a T> where &'a T: TryFrom<&'a ConstantInfo> {
+    pub fn get_t<'a, T>(&'a self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&'a T>
+    where
+        &'a T: TryFrom<&'a ConstantInfo>,
+    {
         let i: ConstantPoolIndex<T> = i.try_into().ok()?;
         let v: &'a ConstantInfo = self.pool.get(i.0 as usize)?;
         <&'a T>::try_from(v).ok()
     }
 
-    pub fn get_t_mut<'a, T>(&'a mut self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&'a mut T> where &'a mut T: TryFrom<&'a mut ConstantInfo> {
+    pub fn get_t_mut<'a, T>(
+        &'a mut self,
+        i: impl TryInto<ConstantPoolIndex<T>>,
+    ) -> Option<&'a mut T>
+    where
+        &'a mut T: TryFrom<&'a mut ConstantInfo>,
+    {
         let i: ConstantPoolIndex<T> = i.try_into().ok()?;
         let v: &'a mut ConstantInfo = self.pool.get_mut(i.0 as usize)?;
         <&'a mut T>::try_from(v).ok()
