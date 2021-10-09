@@ -1,11 +1,11 @@
 use nom::*;
 
-use crate::ClassFileVersion;
 use crate::attribute_info::attribute_parser;
 use crate::constant_info::constant_parser;
 use crate::field_info::field_parser;
 use crate::method_info::method_parser;
 use crate::types::{ClassAccessFlags, ClassFile};
+use crate::ClassFileVersion;
 
 use crate::constant_pool::{ConstantPool, ConstantPoolIndexRaw};
 
@@ -22,7 +22,7 @@ named!(magic_parser, tag!(&[0xCA, 0xFE, 0xBA, 0xBE]));
 ///
 /// match classfile_parser::class_parser(classfile_bytes) {
 ///     Ok((_, class_file)) => {
-///         println!("version {},{}", class_file.major_version, class_file.minor_version);
+///         println!("version {:?}", class_file.version);
 ///     }
 ///     Err(_) => panic!("Failed to parse"),
 /// };
@@ -58,7 +58,10 @@ pub fn class_parser(input: &[u8]) -> IResult<&[u8], ClassFile> {
                 super_class: ConstantPoolIndexRaw::new(super_class),
                 interfaces_count,
                 // TODO: Don't do this map. It is probably a no-op, but still.
-                interfaces: interfaces.into_iter().map(ConstantPoolIndexRaw::new).collect(),
+                interfaces: interfaces
+                    .into_iter()
+                    .map(ConstantPoolIndexRaw::new)
+                    .collect(),
                 fields_count,
                 fields,
                 methods_count,

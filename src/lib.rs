@@ -34,7 +34,7 @@ mod util;
 /// ```rust
 /// match classfile_parser::parse_class("./java-assets/compiled-classes/BasicClass") {
 ///     Ok(class_file) => {
-///         println!("version {},{}", class_file.major_version, class_file.minor_version);
+///         println!("version {:?}", class_file.version);
 ///     }
 ///     Err(ex) => panic!("Failed to parse: {}", ex),
 /// };
