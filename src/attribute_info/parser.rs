@@ -29,8 +29,8 @@ pub fn exception_entry_parser(input: &[u8]) -> Result<(&[u8], ExceptionEntry), E
             >> (ExceptionEntry {
                 start_pc: InstructionIndex(start_pc),
                 end_pc: InstructionIndex(end_pc),
-                handler_pc,
-                catch_type,
+                handler_pc: InstructionIndex(handler_pc),
+                catch_type: ConstantPoolIndexRaw::new(catch_type),
             })
     )
 }
