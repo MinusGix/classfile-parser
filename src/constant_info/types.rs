@@ -123,5 +123,5 @@ pub struct MethodTypeConstant {
 #[derive(Clone, Debug)]
 pub struct InvokeDynamicConstant {
     pub bootstrap_method_attr_index: u16,
-    pub name_and_type_index: u16,
+    pub name_and_type_index: ConstantPoolIndexRaw<NameAndTypeConstant>,
 }

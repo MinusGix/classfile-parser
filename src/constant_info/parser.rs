@@ -143,7 +143,7 @@ named!(const_invoke_dynamic<&[u8], ConstantInfo>, do_parse!(
     (ConstantInfo::InvokeDynamic(
         InvokeDynamicConstant {
             bootstrap_method_attr_index,
-            name_and_type_index,
+            name_and_type_index: ConstantPoolIndexRaw::new(name_and_type_index),
         }
     ))
 ));
