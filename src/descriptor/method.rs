@@ -13,16 +13,16 @@ pub enum MethodDescriptorError<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MethodDescriptor {
-    pub parameter_types: Vec<DescriptorType>,
+pub struct MethodDescriptor<'a> {
+    pub parameter_types: Vec<DescriptorType<'a>>,
     /// If this is None, then the return type was void
-    pub return_type: Option<DescriptorType>,
+    pub return_type: Option<DescriptorType<'a>>,
 }
-impl MethodDescriptor {
+impl<'a> MethodDescriptor<'a> {
     // TODO: Settings that allow the parsing to be more permissive?
     /// Note: We currently don't uphold the JVM restriction of the method descriptor being at most
     /// 255 bytes.
-    pub fn parse(mut text: &str) -> Result<MethodDescriptor, MethodDescriptorError<'_>> {
+    pub fn parse(mut text: &'a str) -> Result<MethodDescriptor<'a>, MethodDescriptorError<'a>> {
         if text.is_empty() {
             return Err(MethodDescriptorError::Empty);
         }
@@ -35,7 +35,12 @@ impl MethodDescriptor {
 
         let mut parameter_types = Vec::new();
 
-        while text.chars().next().map(DescriptorType::is_beginning_char).unwrap_or(false) {
+        while text
+            .chars()
+            .next()
+            .map(DescriptorType::is_beginning_char)
+            .unwrap_or(false)
+        {
             let (parameter, after_text) = DescriptorType::parse(text)
                 .map_err(|x| MethodDescriptorError::ParameterTypeError(x, parameter_types.len()))?;
             text = after_text;
@@ -54,8 +59,8 @@ impl MethodDescriptor {
                 None
             } else {
                 // Otherwise try parsing it as a type, and just use that error
-                let (typ, after_text) = DescriptorType::parse(text)
-                    .map_err(MethodDescriptorError::ReturnTypeError)?;
+                let (typ, after_text) =
+                    DescriptorType::parse(text).map_err(MethodDescriptorError::ReturnTypeError)?;
                 if !after_text.is_empty() {
                     // There was remaining unhandled data, which means we parsed this incorrectly somehow
                     return Err(MethodDescriptorError::RemainingData(after_text));
@@ -71,8 +76,19 @@ impl MethodDescriptor {
             return_type,
         })
     }
+
+    pub fn to_owned<'b>(self) -> MethodDescriptor<'b> {
+        MethodDescriptor {
+            parameter_types: self
+                .parameter_types
+                .into_iter()
+                .map(|x| x.to_owned())
+                .collect(),
+            return_type: self.return_type.map(|x| x.to_owned()),
+        }
+    }
 }
-impl std::fmt::Display for MethodDescriptor {
+impl std::fmt::Display for MethodDescriptor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("(")?;
         for (i, param) in self.parameter_types.iter().enumerate() {
@@ -93,36 +109,70 @@ impl std::fmt::Display for MethodDescriptor {
 
 #[cfg(test)]
 mod tests {
-    use crate::descriptor::{method::{MethodDescriptor, MethodDescriptorError}, types::{DescriptorType, DescriptorTypeError}};
+    use crate::descriptor::{
+        method::{MethodDescriptor, MethodDescriptorError},
+        types::{DescriptorTypeBasic, DescriptorTypeError},
+    };
 
     #[test]
     fn parsing() {
-        assert_eq!(MethodDescriptor::parse(""), Err(MethodDescriptorError::Empty));
-        assert_eq!(MethodDescriptor::parse(")"), Err(MethodDescriptorError::NoOpeningBracket));
-        assert_eq!(MethodDescriptor::parse("("), Err(MethodDescriptorError::NoClosingBracket));
-        assert_eq!(MethodDescriptor::parse("()"), Err(MethodDescriptorError::NoReturnType));
-        assert_eq!(MethodDescriptor::parse("()R"), Err(MethodDescriptorError::ReturnTypeError(DescriptorTypeError::InvalidTypeOpener)));
-        assert_eq!(MethodDescriptor::parse("()V"), Ok(MethodDescriptor {
-            parameter_types: Vec::new(),
-            return_type: None,
-        }));
-        assert_eq!(MethodDescriptor::parse("(I)V"), Ok(MethodDescriptor {
-            parameter_types: vec![DescriptorType::Int],
-            return_type: None,
-        }));
-        assert_eq!(MethodDescriptor::parse("(IDJ)V"), Ok(MethodDescriptor {
-            parameter_types: vec![DescriptorType::Int, DescriptorType::Double, DescriptorType::Long],
-            return_type: None,
-        }));
-        assert_eq!(MethodDescriptor::parse("(IDLjava/lang/Thread;)Ljava/lang/Object;"), Ok(MethodDescriptor {
-            parameter_types: vec![
-                DescriptorType::Int,
-                DescriptorType::Double,
-                DescriptorType::ClassName(
-                    vec!["java".to_owned(), "lang".to_owned(), "Thread".to_owned()]
-                )
-            ],
-            return_type: Some(DescriptorType::ClassName(vec!["java".to_owned(), "lang".to_owned(), "Object".to_owned()])),
-        }));
+        assert_eq!(
+            MethodDescriptor::parse(""),
+            Err(MethodDescriptorError::Empty)
+        );
+        assert_eq!(
+            MethodDescriptor::parse(")"),
+            Err(MethodDescriptorError::NoOpeningBracket)
+        );
+        assert_eq!(
+            MethodDescriptor::parse("("),
+            Err(MethodDescriptorError::NoClosingBracket)
+        );
+        assert_eq!(
+            MethodDescriptor::parse("()"),
+            Err(MethodDescriptorError::NoReturnType)
+        );
+        assert_eq!(
+            MethodDescriptor::parse("()R"),
+            Err(MethodDescriptorError::ReturnTypeError(
+                DescriptorTypeError::InvalidTypeOpener
+            ))
+        );
+        assert_eq!(
+            MethodDescriptor::parse("()V"),
+            Ok(MethodDescriptor {
+                parameter_types: Vec::new(),
+                return_type: None,
+            })
+        );
+        assert_eq!(
+            MethodDescriptor::parse("(I)V"),
+            Ok(MethodDescriptor {
+                parameter_types: vec![DescriptorTypeBasic::Int.into()],
+                return_type: None,
+            })
+        );
+        assert_eq!(
+            MethodDescriptor::parse("(IDJ)V"),
+            Ok(MethodDescriptor {
+                parameter_types: vec![
+                    DescriptorTypeBasic::Int.into(),
+                    DescriptorTypeBasic::Double.into(),
+                    DescriptorTypeBasic::Long.into()
+                ],
+                return_type: None,
+            })
+        );
+        assert_eq!(
+            MethodDescriptor::parse("(IDLjava/lang/Thread;)Ljava/lang/Object;"),
+            Ok(MethodDescriptor {
+                parameter_types: vec![
+                    DescriptorTypeBasic::Int.into(),
+                    DescriptorTypeBasic::Double.into(),
+                    DescriptorTypeBasic::ClassName("java/lang/Thread".into()).into()
+                ],
+                return_type: Some(DescriptorTypeBasic::ClassName("java/lang/Object".into()).into()),
+            })
+        );
     }
 }
