@@ -1,7 +1,7 @@
 use super::types::{DescriptorType, DescriptorTypeError};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MethodDescriptorError<'a> {
+pub enum MethodDescriptorError {
     Empty,
     NoOpeningBracket,
     NoClosingBracket,
@@ -9,7 +9,7 @@ pub enum MethodDescriptorError<'a> {
     ParameterTypeError(DescriptorTypeError, usize),
     ReturnTypeError(DescriptorTypeError),
     NoReturnType,
-    RemainingData(&'a str),
+    RemainingData,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,7 +22,7 @@ impl<'a> MethodDescriptor<'a> {
     // TODO: Settings that allow the parsing to be more permissive?
     /// Note: We currently don't uphold the JVM restriction of the method descriptor being at most
     /// 255 bytes.
-    pub fn parse(mut text: &'a str) -> Result<MethodDescriptor<'a>, MethodDescriptorError<'a>> {
+    pub fn parse(mut text: &'a str) -> Result<MethodDescriptor<'a>, MethodDescriptorError> {
         if text.is_empty() {
             return Err(MethodDescriptorError::Empty);
         }
@@ -63,7 +63,7 @@ impl<'a> MethodDescriptor<'a> {
                     DescriptorType::parse(text).map_err(MethodDescriptorError::ReturnTypeError)?;
                 if !after_text.is_empty() {
                     // There was remaining unhandled data, which means we parsed this incorrectly somehow
-                    return Err(MethodDescriptorError::RemainingData(after_text));
+                    return Err(MethodDescriptorError::RemainingData);
                 }
                 Some(typ)
             }
