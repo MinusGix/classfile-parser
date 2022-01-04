@@ -22,59 +22,27 @@ impl<'a> MethodDescriptor<'a> {
     // TODO: Settings that allow the parsing to be more permissive?
     /// Note: We currently don't uphold the JVM restriction of the method descriptor being at most
     /// 255 bytes.
-    pub fn parse(mut text: &'a str) -> Result<MethodDescriptor<'a>, MethodDescriptorError> {
-        if text.is_empty() {
-            return Err(MethodDescriptorError::Empty);
-        }
-
-        if !text.starts_with('(') {
-            return Err(MethodDescriptorError::NoOpeningBracket);
-        }
-
-        text = &text[1..];
-
+    pub fn parse(text: &'a str) -> Result<MethodDescriptor<'a>, MethodDescriptorError> {
+        // It may or may not be more efficient to inline these iterations
+        // but this avoid duplicating parsing code.
+        let mut iter = MethodDescriptor::parse_iter(text)?;
         let mut parameter_types = Vec::new();
-
-        while text
-            .chars()
-            .next()
-            .map(DescriptorType::is_beginning_char)
-            .unwrap_or(false)
-        {
-            let (parameter, after_text) = DescriptorType::parse(text)
-                .map_err(|x| MethodDescriptorError::ParameterTypeError(x, parameter_types.len()))?;
-            text = after_text;
-            parameter_types.push(parameter);
+        while let Some(parameter) = iter.next() {
+            parameter_types.push(parameter?);
         }
 
-        if !text.starts_with(')') {
-            return Err(MethodDescriptorError::NoClosingBracket);
-        }
-
-        text = &text[1..];
-
-        let ch = text.chars().next();
-        let return_type = if let Some(ch) = ch {
-            if ch == 'V' {
-                None
-            } else {
-                // Otherwise try parsing it as a type, and just use that error
-                let (typ, after_text) =
-                    DescriptorType::parse(text).map_err(MethodDescriptorError::ReturnTypeError)?;
-                if !after_text.is_empty() {
-                    // There was remaining unhandled data, which means we parsed this incorrectly somehow
-                    return Err(MethodDescriptorError::RemainingData);
-                }
-                Some(typ)
-            }
-        } else {
-            return Err(MethodDescriptorError::NoReturnType);
-        };
+        let return_type = iter.finish_return_type()?;
 
         Ok(MethodDescriptor {
             parameter_types,
             return_type,
         })
+    }
+
+    pub fn parse_iter(
+        text: &'a str,
+    ) -> Result<MethodDescriptorParserIterator<'a>, MethodDescriptorError> {
+        MethodDescriptorParserIterator::new(text)
     }
 
     pub fn to_owned<'b>(self) -> MethodDescriptor<'b> {
@@ -104,6 +72,102 @@ impl std::fmt::Display for MethodDescriptor<'_> {
         }
 
         Ok(())
+    }
+}
+
+/// Parses the descriptor types as an iterator
+/// Note: If you want the return type, then you have to call `finish_return_type`
+#[derive(Clone)]
+pub struct MethodDescriptorParserIterator<'a> {
+    text: &'a str,
+    got_all_parameters: bool,
+    errored: bool,
+    processed_parameters: usize,
+}
+impl<'a> MethodDescriptorParserIterator<'a> {
+    fn new(text: &'a str) -> Result<MethodDescriptorParserIterator<'a>, MethodDescriptorError> {
+        if text.is_empty() {
+            return Err(MethodDescriptorError::Empty);
+        }
+
+        if !text.starts_with('(') {
+            return Err(MethodDescriptorError::NoOpeningBracket);
+        }
+
+        let text = &text[1..];
+
+        Ok(MethodDescriptorParserIterator {
+            text,
+            got_all_parameters: false,
+            errored: false,
+            processed_parameters: 0,
+        })
+    }
+
+    pub fn finish_return_type(self) -> Result<Option<DescriptorType<'a>>, MethodDescriptorError> {
+        let ch = self.text.chars().next();
+        if let Some(ch) = ch {
+            // Void is the expected type for returning nothing, but we transform it into `None`
+            if ch == 'V' {
+                Ok(None)
+            } else {
+                // Otherwise, we try parsing it as a type
+                let (typ, after_text) = DescriptorType::parse(self.text)
+                    .map_err(MethodDescriptorError::ReturnTypeError)?;
+                if !after_text.is_empty() {
+                    // There was unhandled remaining data, which means it was bad or that this parsing code is incorrect
+                    return Err(MethodDescriptorError::RemainingData);
+                }
+
+                Ok(Some(typ))
+            }
+        } else {
+            // This is distinct from having a void return type
+            Err(MethodDescriptorError::NoReturnType)
+        }
+    }
+}
+impl<'a> Iterator for MethodDescriptorParserIterator<'a> {
+    type Item = Result<DescriptorType<'a>, MethodDescriptorError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.got_all_parameters || self.errored {
+            return None;
+        }
+
+        let is_descriptor_type = self
+            .text
+            .chars()
+            .next()
+            .map(DescriptorType::is_beginning_char)
+            .unwrap_or(false);
+        if !is_descriptor_type {
+            self.got_all_parameters = true;
+            if !self.text.starts_with(')') {
+                self.errored = true;
+                return Some(Err(MethodDescriptorError::NoClosingBracket));
+            }
+
+            // Skip ')'
+            self.text = &self.text[1..];
+
+            None
+        } else {
+            let res = DescriptorType::parse(self.text).map_err(|x| {
+                MethodDescriptorError::ParameterTypeError(x, self.processed_parameters)
+            });
+            match res {
+                Ok((parameter, after_text)) => {
+                    self.text = after_text;
+                    self.processed_parameters += 1;
+                    Some(Ok(parameter))
+                }
+                Err(err) => {
+                    self.errored = true;
+                    Some(Err(err))
+                }
+            }
+        }
     }
 }
 
