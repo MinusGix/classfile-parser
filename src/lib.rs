@@ -15,8 +15,6 @@ pub mod constant_info;
 pub mod field_info;
 pub mod method_info;
 
-pub mod code_attribute;
-
 pub mod parser;
 pub mod types;
 
