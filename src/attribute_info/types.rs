@@ -38,7 +38,7 @@ pub struct CodeAttribute {
     pub attributes: Vec<AttributeInfo>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum VerificationTypeInfo {
     Top,
     Integer,
