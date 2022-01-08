@@ -8,11 +8,12 @@ categories = ["parser-implementations"]
 repository = "https://github.com/MinusGix/classfile-parser"
 readme = "README.md"
 license = "MIT"
-edition = "2018"
+edition = "2021"
 exclude = [".idea/**/*", "classfile-parser.iml", "java-assets/out/**/*"]
 
 
 [dependencies]
-nom = "^4.1"
+nom = "5"
 bitflags = "^1.2"
 cesu8 = "^1.1"
+smallvec = { version = "1.7", features = ["const_generics"] }

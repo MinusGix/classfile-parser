@@ -1,11 +1,14 @@
-use nom::{be_u16, be_u32, be_u8, Err, ErrorKind};
+use nom::error::ErrorKind;
+use nom::multi::count;
+use nom::number::complete::{be_u16, be_u32, be_u8};
+use nom::{Err, IResult};
 
 use crate::attribute_info::types::StackMapFrame::*;
 use crate::attribute_info::*;
 
 use crate::constant_pool::ConstantPoolIndexRaw;
 
-pub fn attribute_parser(input: &[u8]) -> Result<(&[u8], AttributeInfo), Err<&[u8]>> {
+pub fn attribute_parser(input: &[u8]) -> IResult<&[u8], AttributeInfo> {
     do_parse!(
         input,
         attribute_name_index: be_u16
@@ -19,7 +22,7 @@ pub fn attribute_parser(input: &[u8]) -> Result<(&[u8], AttributeInfo), Err<&[u8
     )
 }
 
-pub fn exception_entry_parser(input: &[u8]) -> Result<(&[u8], ExceptionEntry), Err<&[u8]>> {
+pub fn exception_entry_parser(input: &[u8]) -> IResult<&[u8], ExceptionEntry> {
     do_parse!(
         input,
         start_pc: be_u16
@@ -35,7 +38,7 @@ pub fn exception_entry_parser(input: &[u8]) -> Result<(&[u8], ExceptionEntry), E
     )
 }
 
-pub fn code_attribute_parser(input: &[u8]) -> Result<(&[u8], CodeAttribute), Err<&[u8]>> {
+pub fn code_attribute_parser(input: &[u8]) -> IResult<&[u8], CodeAttribute> {
     do_parse!(
         input,
         max_stack: be_u16
@@ -59,11 +62,11 @@ pub fn code_attribute_parser(input: &[u8]) -> Result<(&[u8], CodeAttribute), Err
     )
 }
 
-fn same_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
+fn same_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
     value!(input, SameFrame { frame_type })
 }
 
-fn verification_type_parser(input: &[u8]) -> Result<(&[u8], VerificationTypeInfo), Err<&[u8]>> {
+fn verification_type_parser(input: &[u8]) -> IResult<&[u8], VerificationTypeInfo> {
     use self::VerificationTypeInfo::*;
     let v = input[0];
     let new_input = &input[1..];
@@ -83,14 +86,14 @@ fn verification_type_parser(input: &[u8]) -> Result<(&[u8], VerificationTypeInfo
                 })
         ),
         8 => do_parse!(new_input, offset: be_u16 >> (Uninitialized { offset })),
-        _ => Result::Err(Err::Error(error_position!(input, ErrorKind::Custom(1)))),
+        _ => Result::Err(Err::Error((input, ErrorKind::Alt))),
     }
 }
 
 fn same_locals_1_stack_item_frame_parser(
     input: &[u8],
     frame_type: u8,
-) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
+) -> IResult<&[u8], StackMapFrame> {
     do_parse!(
         input,
         stack: verification_type_parser >> (SameLocals1StackItemFrame { frame_type, stack })
@@ -100,7 +103,7 @@ fn same_locals_1_stack_item_frame_parser(
 fn same_locals_1_stack_item_frame_extended_parser(
     input: &[u8],
     frame_type: u8,
-) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
+) -> IResult<&[u8], StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -113,7 +116,7 @@ fn same_locals_1_stack_item_frame_extended_parser(
     )
 }
 
-fn chop_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
+fn chop_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -124,10 +127,7 @@ fn chop_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapFra
     )
 }
 
-fn same_frame_extended_parser(
-    input: &[u8],
-    frame_type: u8,
-) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
+fn same_frame_extended_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -138,7 +138,7 @@ fn same_frame_extended_parser(
     )
 }
 
-fn append_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
+fn append_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -151,7 +151,7 @@ fn append_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapF
     )
 }
 
-fn full_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
+fn full_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -170,7 +170,7 @@ fn full_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapFra
     )
 }
 
-fn stack_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
+fn stack_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
     match frame_type {
         0..=63 => same_frame_parser(input, frame_type),
         64..=127 => same_locals_1_stack_item_frame_parser(input, frame_type),
@@ -179,20 +179,16 @@ fn stack_frame_parser(input: &[u8], frame_type: u8) -> Result<(&[u8], StackMapFr
         251 => same_frame_extended_parser(input, frame_type),
         252..=254 => append_frame_parser(input, frame_type),
         255 => full_frame_parser(input, frame_type),
-        _ => Result::Err(Err::Error(error_position!(input, ErrorKind::Custom(2)))),
+        _ => Result::Err(Err::Error((input, ErrorKind::Alt))),
     }
 }
 
-fn stack_map_frame_entry_parser(input: &[u8]) -> Result<(&[u8], StackMapFrame), Err<&[u8]>> {
-    do_parse!(
-        input,
-        frame_type: be_u8 >> stack_frame: apply!(stack_frame_parser, frame_type) >> (stack_frame)
-    )
+fn stack_map_frame_entry_parser(i: &[u8]) -> IResult<&[u8], StackMapFrame> {
+    let (i, frame_type) = be_u8(i)?;
+    stack_frame_parser(i, frame_type)
 }
 
-pub fn stack_map_table_attribute_parser(
-    input: &[u8],
-) -> Result<(&[u8], StackMapTableAttribute), Err<&[u8]>> {
+pub fn stack_map_table_attribute_parser(input: &[u8]) -> IResult<&[u8], StackMapTableAttribute> {
     do_parse!(
         input,
         number_of_entries: be_u16
@@ -204,9 +200,7 @@ pub fn stack_map_table_attribute_parser(
     )
 }
 
-pub fn exceptions_attribute_parser(
-    input: &[u8],
-) -> Result<(&[u8], ExceptionsAttribute), Err<&[u8]>> {
+pub fn exceptions_attribute_parser(input: &[u8]) -> IResult<&[u8], ExceptionsAttribute> {
     do_parse!(
         input,
         exception_table_length: be_u16
@@ -222,9 +216,7 @@ pub fn exceptions_attribute_parser(
     )
 }
 
-pub fn constant_value_attribute_parser(
-    input: &[u8],
-) -> Result<(&[u8], ConstantValueAttribute), Err<&[u8]>> {
+pub fn constant_value_attribute_parser(input: &[u8]) -> IResult<&[u8], ConstantValueAttribute> {
     do_parse!(
         input,
         constant_value_index: be_u16
@@ -234,7 +226,7 @@ pub fn constant_value_attribute_parser(
     )
 }
 
-fn bootstrap_method_parser(input: &[u8]) -> Result<(&[u8], BootstrapMethod), Err<&[u8]>> {
+fn bootstrap_method_parser(input: &[u8]) -> IResult<&[u8], BootstrapMethod> {
     do_parse!(
         input,
         bootstrap_method_ref: be_u16
@@ -250,7 +242,7 @@ fn bootstrap_method_parser(input: &[u8]) -> Result<(&[u8], BootstrapMethod), Err
 
 pub fn bootstrap_methods_attribute_parser(
     input: &[u8],
-) -> Result<(&[u8], BootstrapMethodsAttribute), Err<&[u8]>> {
+) -> IResult<&[u8], BootstrapMethodsAttribute> {
     do_parse!(
         input,
         num_bootstrap_methods: be_u16
@@ -262,9 +254,7 @@ pub fn bootstrap_methods_attribute_parser(
     )
 }
 
-pub fn sourcefile_attribute_parser(
-    input: &[u8],
-) -> Result<(&[u8], SourceFileAttribute), Err<&[u8]>> {
+pub fn sourcefile_attribute_parser(input: &[u8]) -> IResult<&[u8], SourceFileAttribute> {
     do_parse!(
         input,
         attribute_name_index: be_u16

@@ -2,7 +2,10 @@ use crate::attribute_info::AttributeInfo;
 use crate::field_info::FieldInfo;
 use crate::method_info::MethodInfo;
 
-use crate::{constant_info::ClassConstant, constant_pool::{ConstantPool, ConstantPoolIndexRaw}};
+use crate::{
+    constant_info::ClassConstant,
+    constant_pool::{ConstantPool, ConstantPoolIndexRaw},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClassFileJavaVersion {
@@ -48,7 +51,7 @@ pub struct ClassFileVersion {
     pub major: u16,
     pub minor: u16,
 }
-impl ClassFileVersion{
+impl ClassFileVersion {
     pub fn into_java_version(self) -> Option<ClassFileJavaVersion> {
         ClassFileJavaVersion::from_version(self.major, self.minor)
     }

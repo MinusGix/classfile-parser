@@ -27,7 +27,8 @@ fn test_attribute_stack_map_table() {
 
             let p = stack_map_table_attribute_parser(&code.attributes[0].info);
             match p {
-                Result::Ok((_, a)) => {
+                Result::Ok((data, a)) => {
+                    assert!(data.is_empty());
                     assert_eq!(a.entries.len(), a.number_of_entries as usize);
                     assert_eq!(a.entries.len(), 2);
 
