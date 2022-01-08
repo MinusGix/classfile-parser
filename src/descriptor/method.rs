@@ -27,6 +27,7 @@ impl<'a> MethodDescriptor<'a> {
         // but this avoid duplicating parsing code.
         let mut iter = MethodDescriptor::parse_iter(text)?;
         let mut parameter_types = Vec::new();
+        #[allow(clippy::while_let_on_iterator)]
         while let Some(parameter) = iter.next() {
             parameter_types.push(parameter?);
         }

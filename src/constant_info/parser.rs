@@ -1,5 +1,4 @@
 use nom::error::ErrorKind;
-use nom::multi::count;
 use nom::number::complete::{be_f32, be_f64, be_i32, be_i64, be_u16, be_u8};
 use nom::{Err, IResult};
 
@@ -198,7 +197,7 @@ pub fn constant_parser(i: &[u8], const_pool_size: usize) -> IResult<&[u8], Vec<C
                 index += 1;
             }
             _ => {
-                return Result::Err(Err::Error((i, ErrorKind::Alt)));
+                return Result::Err(Err::Error(nom::error::Error::new(input, ErrorKind::Alt)));
             }
         }
     }

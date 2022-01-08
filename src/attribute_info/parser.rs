@@ -1,5 +1,4 @@
 use nom::error::ErrorKind;
-use nom::multi::count;
 use nom::number::complete::{be_u16, be_u32, be_u8};
 use nom::{Err, IResult};
 
@@ -86,7 +85,7 @@ fn verification_type_parser(input: &[u8]) -> IResult<&[u8], VerificationTypeInfo
                 })
         ),
         8 => do_parse!(new_input, offset: be_u16 >> (Uninitialized { offset })),
-        _ => Result::Err(Err::Error((input, ErrorKind::Alt))),
+        _ => Result::Err(Err::Error(nom::error::Error::new(input, ErrorKind::Alt))),
     }
 }
 
@@ -179,7 +178,7 @@ fn stack_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFr
         251 => same_frame_extended_parser(input, frame_type),
         252..=254 => append_frame_parser(input, frame_type),
         255 => full_frame_parser(input, frame_type),
-        _ => Result::Err(Err::Error((input, ErrorKind::Alt))),
+        _ => Result::Err(Err::Error(nom::error::Error::new(input, ErrorKind::Alt))),
     }
 }
 
