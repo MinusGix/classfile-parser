@@ -19,11 +19,9 @@ fn test_attribute_bootstrap_methods() {
             for (const_index, const_item) in c.const_pool.iter().enumerate() {
                 println!("\t[{}] = {:?}", (const_index + 1), const_item);
                 if let ConstantInfo::Utf8(ref c) = *const_item {
-                    if c.utf8_string == "BootstrapMethods" {
+                    if c.as_text() == "BootstrapMethods" {
                         if bootstrap_method_const_index != 0 {
-                            panic!(
-                                "Should not find more than one BootstrapMethods constant"
-                            );
+                            panic!("Should not find more than one BootstrapMethods constant");
                         }
                         bootstrap_method_const_index = (const_index + 1) as u16;
                     }
@@ -75,7 +73,7 @@ fn should_have_no_bootstrap_method_attr_if_no_invoke_dynamic() {
         Result::Ok((_, c)) => {
             for (_, const_item) in c.const_pool.iter().enumerate() {
                 if let ConstantInfo::Utf8(ref c) = *const_item {
-                    if c.utf8_string == "BootstrapMethods" {
+                    if c.as_text() == "BootstrapMethods" {
                         panic!("Should not have found a BootstrapMethods constant in a class not requiring it")
                     }
                 }

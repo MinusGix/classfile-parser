@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::{constant_pool::ConstantPoolIndexRaw, impl_from_try_reverse};
 
 #[derive(Clone, Debug)]
@@ -45,8 +47,47 @@ impl_from_try_reverse!(enum InvokeDynamicConstant => ConstantInfo::InvokeDynamic
 
 #[derive(Clone, Debug)]
 pub struct Utf8Constant {
-    pub utf8_string: String,
     pub bytes: Vec<u8>,
+    text: Option<String>,
+}
+impl Utf8Constant {
+    pub(crate) fn new(bytes: Vec<u8>) -> Utf8Constant {
+        Utf8Constant { bytes, text: None }
+    }
+
+    /// Convert this to text
+    /// Note that this at times has to do an allocation on first call, but is cached for later calls
+    pub fn as_text_mut(&mut self) -> &str {
+        // This weird check and unwrap is to avoid the borrow checker
+        if self.text.is_some() {
+            self.text.as_ref().unwrap().as_str()
+        } else {
+            let text = cesu8::from_java_cesu8(&self.bytes)
+                .unwrap_or_else(|_| String::from_utf8_lossy(&self.bytes));
+            match text {
+                Cow::Borrowed(text) => text,
+                Cow::Owned(text) => {
+                    self.text = Some(text);
+                    let text = self.text.as_ref().unwrap().as_str();
+                    text
+                }
+            }
+        }
+    }
+
+    /// Convert this to text.
+    /// Note that this at times has to do an allocation on first call.
+    /// You should prefer using `as_text_mut` since that caches.
+    pub fn as_text(&self) -> Cow<str> {
+        if let Some(text) = &self.text {
+            Cow::Borrowed(text.as_str())
+        } else {
+            let text = cesu8::from_java_cesu8(&self.bytes)
+                .unwrap_or_else(|_| String::from_utf8_lossy(&self.bytes));
+            // We can't store the owned version since we don't have mutable access to cache it
+            text
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

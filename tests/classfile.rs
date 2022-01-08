@@ -18,7 +18,7 @@ fn test_valid_class() {
             for (const_index, const_item) in c.const_pool.iter().enumerate() {
                 println!("\t[{}] = {:?}", (const_index + 1), const_item);
                 if let ConstantInfo::Utf8(ref c) = *const_item {
-                    if c.utf8_string == "Code" {
+                    if c.as_text() == "Code" {
                         code_const_index = (const_index + 1) as u16;
                     }
                 }
@@ -89,22 +89,21 @@ fn test_utf_string_constants() {
             for (const_index, const_item) in c.const_pool.iter().enumerate() {
                 println!("\t[{}] = {:?}", (const_index + 1), const_item);
                 if let ConstantInfo::Utf8(ref c) = *const_item {
-                    if c.utf8_string == "2H₂ + O₂ ⇌ 2H₂O, R = 4.7 kΩ, ⌀ 200 mm" {
+                    let text = c.as_text();
+                    if text == "2H₂ + O₂ ⇌ 2H₂O, R = 4.7 kΩ, ⌀ 200 mm" {
                         found_utf_maths_string = true;
                     }
-                    if c.utf8_string
-                        == "ᚻᛖ ᚳᚹᚫᚦ ᚦᚫᛏ ᚻᛖ ᛒᚢᛞᛖ ᚩᚾ ᚦᚫᛗ ᛚᚪᚾᛞᛖ ᚾᚩᚱᚦᚹᛖᚪᚱᛞᚢᛗ ᚹᛁᚦ ᚦᚪ ᚹᛖᛥᚫ"
+                    if text == "ᚻᛖ ᚳᚹᚫᚦ ᚦᚫᛏ ᚻᛖ ᛒᚢᛞᛖ ᚩᚾ ᚦᚫᛗ ᛚᚪᚾᛞᛖ ᚾᚩᚱᚦᚹᛖᚪᚱᛞᚢᛗ ᚹᛁᚦ ᚦᚪ ᚹᛖᛥᚫ"
                     {
                         found_utf_runes_string = true;
                     }
-                    if c.utf8_string == "⡌⠁⠧⠑ ⠼⠁⠒  ⡍⠜⠇⠑⠹⠰⠎ ⡣⠕⠌"
-                    {
+                    if text == "⡌⠁⠧⠑ ⠼⠁⠒  ⡍⠜⠇⠑⠹⠰⠎ ⡣⠕⠌" {
                         found_utf_braille_string = true;
                     }
-                    if c.utf8_string == "\0𠜎" {
+                    if text == "\0𠜎" {
                         found_utf_modified_string = true;
                     }
-                    if c.utf8_string == "X���X" && c.bytes.len() == 5 {
+                    if text == "X���X" && c.bytes.len() == 5 {
                         found_utf_unpaired_string = true;
                     }
                 }
@@ -127,7 +126,9 @@ fn test_utf_string_constants() {
 fn test_malformed_class() {
     let malformed_class = include_bytes!("../java-assets/compiled-classes/malformed.class");
     let res = class_parser(malformed_class);
-    if let Result::Ok((_, _)) = res { panic!("The file is not valid and shouldn't be parsed") };
+    if let Result::Ok((_, _)) = res {
+        panic!("The file is not valid and shouldn't be parsed")
+    };
 }
 
 // #[test]

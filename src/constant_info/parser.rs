@@ -5,19 +5,10 @@ use nom::{Err, IResult};
 use crate::constant_info::*;
 use crate::util::constant_pool_index_raw;
 
-fn utf8_constant(input: &[u8]) -> Utf8Constant {
-    let utf8_string =
-        cesu8::from_java_cesu8(input).unwrap_or_else(|_| String::from_utf8_lossy(input));
-    Utf8Constant {
-        utf8_string: utf8_string.to_string(),
-        bytes: input.to_owned(),
-    }
-}
-
 named!(const_utf8<&[u8], ConstantInfo>, do_parse!(
     length: be_u16 >>
-    constant: map!(take!(length), utf8_constant) >>
-    (ConstantInfo::Utf8(constant))
+    bytes: take!(length) >>
+    (ConstantInfo::Utf8(Utf8Constant::new(bytes.to_owned())))
 ));
 
 named!(const_integer<&[u8], ConstantInfo>, do_parse!(
