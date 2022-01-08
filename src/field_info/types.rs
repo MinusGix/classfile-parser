@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::attribute_info::AttributeInfo;
 
 use crate::{constant_info::Utf8Constant, constant_pool::ConstantPoolIndexRaw};
@@ -8,7 +10,7 @@ pub struct FieldInfo {
     pub name_index: ConstantPoolIndexRaw<Utf8Constant>,
     pub descriptor_index: ConstantPoolIndexRaw<Utf8Constant>,
     pub attributes_count: u16,
-    pub attributes: Vec<AttributeInfo>,
+    pub attributes: SmallVec<[AttributeInfo; 2]>,
 }
 
 bitflags! {

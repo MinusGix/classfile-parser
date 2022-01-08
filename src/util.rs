@@ -1,4 +1,5 @@
 use nom::{number::complete::be_u16, IResult};
+use smallvec::SmallVec;
 
 use crate::constant_pool::ConstantPoolIndexRaw;
 
@@ -60,4 +61,42 @@ macro_rules! impl_from_try_reverse {
 pub(crate) fn constant_pool_index_raw<T>(i: &[u8]) -> IResult<&[u8], ConstantPoolIndexRaw<T>> {
     let (i, v) = be_u16(i)?;
     Ok((i, ConstantPoolIndexRaw::new(v)))
+}
+
+/// Count but for small vec
+pub(crate) fn count_sv<const N: usize, I, O, E, F>(
+    mut f: F,
+    count: usize,
+) -> impl FnMut(I) -> IResult<I, SmallVec<[O; N]>, E>
+where
+    I: Clone + PartialEq,
+    F: nom::Parser<I, O, E>,
+    E: nom::error::ParseError<I>,
+{
+    move |i: I| {
+        let mut input = i.clone();
+        let mut res = SmallVec::with_capacity(count);
+
+        for _ in 0..count {
+            let input_ = input.clone();
+            match f.parse(input_) {
+                Ok((i, o)) => {
+                    res.push(o);
+                    input = i;
+                }
+                Err(nom::Err::Error(e)) => {
+                    return Err(nom::Err::Error(E::append(
+                        i,
+                        nom::error::ErrorKind::Count,
+                        e,
+                    )));
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
+        Ok((input, res))
+    }
 }

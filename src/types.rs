@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::attribute_info::AttributeInfo;
 use crate::field_info::FieldInfo;
 use crate::method_info::MethodInfo;
@@ -66,13 +68,13 @@ pub struct ClassFile {
     pub this_class: ConstantPoolIndexRaw<ClassConstant>,
     pub super_class: ConstantPoolIndexRaw<ClassConstant>,
     pub interfaces_count: u16,
-    pub interfaces: Vec<ConstantPoolIndexRaw<ClassConstant>>,
+    pub interfaces: SmallVec<[ConstantPoolIndexRaw<ClassConstant>; 4]>,
     pub fields_count: u16,
-    pub fields: Vec<FieldInfo>,
+    pub fields: SmallVec<[FieldInfo; 6]>,
     pub methods_count: u16,
-    pub methods: Vec<MethodInfo>,
+    pub methods: SmallVec<[MethodInfo; 6]>,
     pub attributes_count: u16,
-    pub attributes: Vec<AttributeInfo>,
+    pub attributes: SmallVec<[AttributeInfo; 4]>,
 }
 
 bitflags! {

@@ -1,5 +1,4 @@
 use nom::bytes::complete::tag;
-use nom::multi::count;
 use nom::number::complete::be_u16;
 use nom::IResult;
 
@@ -11,7 +10,7 @@ use crate::types::{ClassAccessFlags, ClassFile};
 use crate::ClassFileVersion;
 
 use crate::constant_pool::ConstantPool;
-use crate::util::constant_pool_index_raw;
+use crate::util::{constant_pool_index_raw, count_sv};
 
 // named!(magic_parser, tag!(&[0xCA, 0xFE, 0xBA, 0xBE]));
 
@@ -51,16 +50,16 @@ pub fn class_parser(i: &[u8]) -> IResult<&[u8], ClassFile> {
     let (i, super_class) = constant_pool_index_raw(i)?;
 
     let (i, interfaces_count) = be_u16(i)?;
-    let (i, interfaces) = count(constant_pool_index_raw, interfaces_count.into())(i)?;
+    let (i, interfaces) = count_sv(constant_pool_index_raw, interfaces_count.into())(i)?;
 
     let (i, fields_count) = be_u16(i)?;
-    let (i, fields) = count(field_parser, fields_count.into())(i)?;
+    let (i, fields) = count_sv(field_parser, fields_count.into())(i)?;
 
     let (i, methods_count) = be_u16(i)?;
-    let (i, methods) = count(method_parser, methods_count.into())(i)?;
+    let (i, methods) = count_sv(method_parser, methods_count.into())(i)?;
 
     let (i, attributes_count) = be_u16(i)?;
-    let (i, attributes) = count(attribute_parser, attributes_count.into())(i)?;
+    let (i, attributes) = count_sv(attribute_parser, attributes_count.into())(i)?;
 
     Ok((
         i,
