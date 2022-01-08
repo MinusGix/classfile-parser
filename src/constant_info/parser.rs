@@ -3,8 +3,7 @@ use nom::number::complete::{be_f32, be_f64, be_i32, be_i64, be_u16, be_u8};
 use nom::{Err, IResult};
 
 use crate::constant_info::*;
-
-use crate::constant_pool::ConstantPoolIndexRaw;
+use crate::util::constant_pool_index_raw;
 
 fn utf8_constant(input: &[u8]) -> Utf8Constant {
     let utf8_string =
@@ -58,94 +57,94 @@ named!(const_double<&[u8], ConstantInfo>, do_parse!(
 ));
 
 named!(const_class<&[u8], ConstantInfo>, do_parse!(
-    name_index: be_u16 >>
+    name_index: constant_pool_index_raw >>
     (ConstantInfo::Class(
         ClassConstant {
-            name_index: ConstantPoolIndexRaw::new(name_index),
+            name_index,
         }
     ))
 ));
 
 named!(const_string<&[u8], ConstantInfo>, do_parse!(
-    string_index: be_u16 >>
+    string_index: constant_pool_index_raw >>
     (ConstantInfo::String(
         StringConstant {
-            string_index: ConstantPoolIndexRaw::new(string_index),
+            string_index,
         }
     ))
 ));
 
 named!(const_field_ref<&[u8], ConstantInfo>, do_parse!(
-    class_index: be_u16 >>
-    name_and_type_index: be_u16 >>
+    class_index: constant_pool_index_raw >>
+    name_and_type_index: constant_pool_index_raw >>
     (ConstantInfo::FieldRef(
         FieldRefConstant {
-            class_index: ConstantPoolIndexRaw::new(class_index),
-            name_and_type_index: ConstantPoolIndexRaw::new(name_and_type_index),
+            class_index,
+            name_and_type_index,
         }
     ))
 ));
 
 named!(const_method_ref<&[u8], ConstantInfo>, do_parse!(
-    class_index: be_u16 >>
-    name_and_type_index: be_u16 >>
+    class_index: constant_pool_index_raw >>
+    name_and_type_index: constant_pool_index_raw >>
     (ConstantInfo::MethodRef(
         MethodRefConstant {
-            class_index: ConstantPoolIndexRaw::new(class_index),
-            name_and_type_index: ConstantPoolIndexRaw::new(name_and_type_index),
+            class_index,
+            name_and_type_index,
         }
     ))
 ));
 
 named!(const_interface_method_ref<&[u8], ConstantInfo>, do_parse!(
-    class_index: be_u16 >>
-    name_and_type_index: be_u16 >>
+    class_index: constant_pool_index_raw >>
+    name_and_type_index: constant_pool_index_raw >>
     (ConstantInfo::InterfaceMethodRef(
         InterfaceMethodRefConstant {
-            class_index: ConstantPoolIndexRaw::new(class_index),
-            name_and_type_index: ConstantPoolIndexRaw::new(name_and_type_index),
+            class_index,
+            name_and_type_index,
         }
     ))
 ));
 
 named!(const_name_and_type<&[u8], ConstantInfo>, do_parse!(
-    name_index: be_u16 >>
-    descriptor_index: be_u16 >>
+    name_index: constant_pool_index_raw >>
+    descriptor_index: constant_pool_index_raw >>
     (ConstantInfo::NameAndType(
         NameAndTypeConstant {
-            name_index: ConstantPoolIndexRaw::new(name_index),
-            descriptor_index: ConstantPoolIndexRaw::new(descriptor_index),
+            name_index,
+            descriptor_index,
         }
     ))
 ));
 
 named!(const_method_handle<&[u8], ConstantInfo>, do_parse!(
     reference_kind: be_u8 >>
-    reference_index: be_u16 >>
+    reference_index: constant_pool_index_raw >>
     (ConstantInfo::MethodHandle(
         MethodHandleConstant {
             reference_kind,
-            reference_index: ConstantPoolIndexRaw::new(reference_index),
+            reference_index,
         }
     ))
 ));
 
 named!(const_method_type<&[u8], ConstantInfo>, do_parse!(
-    descriptor_index: be_u16 >>
+    descriptor_index: constant_pool_index_raw >>
     (ConstantInfo::MethodType(
         MethodTypeConstant {
-            descriptor_index: ConstantPoolIndexRaw::new(descriptor_index),
+            descriptor_index,
         }
     ))
 ));
 
 named!(const_invoke_dynamic<&[u8], ConstantInfo>, do_parse!(
     bootstrap_method_attr_index: be_u16 >>
-    name_and_type_index: be_u16 >>
+    name_and_type_index: constant_pool_index_raw >>
     (ConstantInfo::InvokeDynamic(
         InvokeDynamicConstant {
             bootstrap_method_attr_index,
-            name_and_type_index: ConstantPoolIndexRaw::new(name_and_type_index),
+            name_and_type_index,
         }
     ))
 ));

@@ -5,16 +5,16 @@ use nom::{Err, IResult};
 use crate::attribute_info::types::StackMapFrame::*;
 use crate::attribute_info::*;
 
-use crate::constant_pool::ConstantPoolIndexRaw;
+use crate::util::constant_pool_index_raw;
 
 pub fn attribute_parser(input: &[u8]) -> IResult<&[u8], AttributeInfo> {
     do_parse!(
         input,
-        attribute_name_index: be_u16
+        attribute_name_index: constant_pool_index_raw
             >> attribute_length: be_u32
             >> info: take!(attribute_length)
             >> (AttributeInfo {
-                attribute_name_index: ConstantPoolIndexRaw::new(attribute_name_index),
+                attribute_name_index,
                 attribute_length,
                 info: info.to_owned(),
             })
@@ -27,12 +27,12 @@ pub fn exception_entry_parser(input: &[u8]) -> IResult<&[u8], ExceptionEntry> {
         start_pc: be_u16
             >> end_pc: be_u16
             >> handler_pc: be_u16
-            >> catch_type: be_u16
+            >> catch_type: constant_pool_index_raw
             >> (ExceptionEntry {
                 start_pc: InstructionIndex(start_pc),
                 end_pc: InstructionIndex(end_pc),
                 handler_pc: InstructionIndex(handler_pc),
-                catch_type: ConstantPoolIndexRaw::new(catch_type),
+                catch_type,
             })
     )
 }
@@ -79,10 +79,7 @@ fn verification_type_parser(input: &[u8]) -> IResult<&[u8], VerificationTypeInfo
         6 => Ok((new_input, UninitializedThis)),
         7 => do_parse!(
             new_input,
-            class: be_u16
-                >> (Object {
-                    class: ConstantPoolIndexRaw::new(class)
-                })
+            class: constant_pool_index_raw >> (Object { class })
         ),
         8 => do_parse!(new_input, offset: be_u16 >> (Uninitialized { offset })),
         _ => Result::Err(Err::Error(nom::error::Error::new(input, ErrorKind::Alt))),
@@ -203,14 +200,10 @@ pub fn exceptions_attribute_parser(input: &[u8]) -> IResult<&[u8], ExceptionsAtt
     do_parse!(
         input,
         exception_table_length: be_u16
-            >> exception_table: count!(be_u16, exception_table_length as usize)
+            >> exception_table: count!(constant_pool_index_raw, exception_table_length as usize)
             >> (ExceptionsAttribute {
                 exception_table_length,
-                // TODO: parse directly as type
-                exception_table: exception_table
-                    .into_iter()
-                    .map(ConstantPoolIndexRaw::new)
-                    .collect(),
+                exception_table
             })
     )
 }
@@ -258,7 +251,7 @@ pub fn sourcefile_attribute_parser(input: &[u8]) -> IResult<&[u8], SourceFileAtt
         input,
         attribute_name_index: be_u16
             >> attribute_length: be_u32
-            >> sourcefile_index: be_u16
+            >> sourcefile_index: constant_pool_index_raw
             >> (SourceFileAttribute {
                 attribute_name_index,
                 attribute_length,

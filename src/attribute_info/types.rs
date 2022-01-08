@@ -139,5 +139,5 @@ pub struct SourceFileAttribute {
     pub attribute_length: u32,
     /// The value of the sourcefile_index item must be a valid index into the constant_pool table.
     /// The constant_pool entry at that index must be a CONSTANT_Utf8_info structure representing a string.
-    pub sourcefile_index: u16,
+    pub sourcefile_index: ConstantPoolIndexRaw<Utf8Constant>,
 }

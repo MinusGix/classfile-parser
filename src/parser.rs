@@ -10,7 +10,8 @@ use crate::method_info::method_parser;
 use crate::types::{ClassAccessFlags, ClassFile};
 use crate::ClassFileVersion;
 
-use crate::constant_pool::{ConstantPool, ConstantPoolIndexRaw};
+use crate::constant_pool::ConstantPool;
+use crate::util::constant_pool_index_raw;
 
 // named!(magic_parser, tag!(&[0xCA, 0xFE, 0xBA, 0xBE]));
 
@@ -46,11 +47,11 @@ pub fn class_parser(i: &[u8]) -> IResult<&[u8], ClassFile> {
 
     let (i, access_flags) = be_u16(i)?;
 
-    let (i, this_class) = be_u16(i)?;
-    let (i, super_class) = be_u16(i)?;
+    let (i, this_class) = constant_pool_index_raw(i)?;
+    let (i, super_class) = constant_pool_index_raw(i)?;
 
     let (i, interfaces_count) = be_u16(i)?;
-    let (i, interfaces) = count(be_u16, interfaces_count.into())(i)?;
+    let (i, interfaces) = count(constant_pool_index_raw, interfaces_count.into())(i)?;
 
     let (i, fields_count) = be_u16(i)?;
     let (i, fields) = count(field_parser, fields_count.into())(i)?;
@@ -71,13 +72,10 @@ pub fn class_parser(i: &[u8]) -> IResult<&[u8], ClassFile> {
             const_pool_size,
             const_pool: ConstantPool::new(const_pool),
             access_flags: ClassAccessFlags::from_bits_truncate(access_flags),
-            this_class: ConstantPoolIndexRaw::new(this_class),
-            super_class: ConstantPoolIndexRaw::new(super_class),
+            this_class,
+            super_class,
             interfaces_count,
-            interfaces: interfaces
-                .into_iter()
-                .map(ConstantPoolIndexRaw::new)
-                .collect(),
+            interfaces,
             fields_count,
             fields,
             methods_count,
