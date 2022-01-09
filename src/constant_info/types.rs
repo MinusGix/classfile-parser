@@ -1,6 +1,6 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, ops::Range};
 
-use crate::{constant_pool::ConstantPoolIndexRaw, impl_from_try_reverse};
+use crate::{constant_pool::ConstantPoolIndexRaw, impl_from_try_reverse, parser::ParseData};
 
 #[derive(Clone, Debug)]
 pub enum ConstantInfo {
@@ -45,48 +45,37 @@ impl_from_try_reverse!(enum MethodTypeConstant => ConstantInfo::MethodType; Inco
 impl_from_try_reverse!(enum InvokeDynamicConstant => ConstantInfo::InvokeDynamic; IncorrectConstant);
 // TODO: From Unusuable?
 
+pub fn to_text(bytes: &[u8]) -> Cow<str> {
+    cesu8::from_java_cesu8(bytes).unwrap_or_else(|_| String::from_utf8_lossy(bytes))
+}
+
 #[derive(Clone, Debug)]
 pub struct Utf8Constant {
-    pub bytes: Vec<u8>,
-    text: Option<String>,
+    data: Range<usize>,
 }
 impl Utf8Constant {
-    pub(crate) fn new(bytes: Vec<u8>) -> Utf8Constant {
-        Utf8Constant { bytes, text: None }
+    pub(crate) fn new(data: Range<usize>) -> Utf8Constant {
+        Utf8Constant { data }
     }
 
-    /// Convert this to text
-    /// Note that this at times has to do an allocation on first call, but is cached for later calls
-    pub fn as_text_mut(&mut self) -> &str {
-        // This weird check and unwrap is to avoid the borrow checker
-        if self.text.is_some() {
-            self.text.as_ref().unwrap().as_str()
-        } else {
-            let text = cesu8::from_java_cesu8(&self.bytes)
-                .unwrap_or_else(|_| String::from_utf8_lossy(&self.bytes));
-            match text {
-                Cow::Borrowed(text) => text,
-                Cow::Owned(text) => {
-                    self.text = Some(text);
-                    let text = self.text.as_ref().unwrap().as_str();
-                    text
-                }
-            }
-        }
+    /// Note that this is the bytes len
+    pub fn len(&self) -> usize {
+        self.data.len()
     }
 
-    /// Convert this to text.
-    /// Note that this at times has to do an allocation on first call.
-    /// You should prefer using `as_text_mut` since that caches.
-    pub fn as_text(&self) -> Cow<str> {
-        if let Some(text) = &self.text {
-            Cow::Borrowed(text.as_str())
-        } else {
-            let text = cesu8::from_java_cesu8(&self.bytes)
-                .unwrap_or_else(|_| String::from_utf8_lossy(&self.bytes));
-            // We can't store the owned version since we don't have mutable access to cache it
-            text
-        }
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    /// Converts the data to text
+    /// Note that it uses the `to_text` method, so if you have a more explicit source of the bytes,
+    /// then that may be better for you to use.
+    /// It tries avoiding an allocation if it can be represented as a Rust string without issues,
+    /// but will allocate if it has too.
+    pub fn as_text<'a>(&self, class_file_data: &'a [u8]) -> Cow<'a, str> {
+        let i = ParseData::from_range(class_file_data, self.data.clone());
+        let bytes = i.data();
+        to_text(bytes)
     }
 }
 

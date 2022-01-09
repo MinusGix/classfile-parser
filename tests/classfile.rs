@@ -19,7 +19,7 @@ fn test_valid_class() {
             for (const_index, const_item) in c.const_pool.iter().enumerate() {
                 println!("\t[{}] = {:?}", (const_index + 1), const_item);
                 if let ConstantInfo::Utf8(ref c) = *const_item {
-                    if c.as_text() == "Code" {
+                    if c.as_text(valid_class) == "Code" {
                         code_const_index = (const_index + 1) as u16;
                     }
                 }
@@ -91,7 +91,7 @@ fn test_utf_string_constants() {
             for (const_index, const_item) in c.const_pool.iter().enumerate() {
                 println!("\t[{}] = {:?}", (const_index + 1), const_item);
                 if let ConstantInfo::Utf8(ref c) = *const_item {
-                    let text = c.as_text();
+                    let text = c.as_text(valid_class);
                     if text == "2H₂ + O₂ ⇌ 2H₂O, R = 4.7 kΩ, ⌀ 200 mm" {
                         found_utf_maths_string = true;
                     }
@@ -105,7 +105,7 @@ fn test_utf_string_constants() {
                     if text == "\0𠜎" {
                         found_utf_modified_string = true;
                     }
-                    if text == "X���X" && c.bytes.len() == 5 {
+                    if text == "X���X" && c.len() == 5 {
                         found_utf_unpaired_string = true;
                     }
                 }

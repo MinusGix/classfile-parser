@@ -9,7 +9,7 @@ use crate::util::constant_pool_index_raw;
 named!(const_utf8<ParseData, ConstantInfo>, do_parse!(
     length: be_u16 >>
     bytes: take!(length) >>
-    (ConstantInfo::Utf8(Utf8Constant::new(bytes.data().to_owned())))
+    (ConstantInfo::Utf8(Utf8Constant::new(bytes.as_range())))
 ));
 
 named!(const_integer<ParseData, ConstantInfo>, do_parse!(
