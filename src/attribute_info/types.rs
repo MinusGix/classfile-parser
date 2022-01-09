@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::{
     constant_info::{ClassConstant, Utf8Constant},
     constant_pool::ConstantPoolIndexRaw,
@@ -11,7 +13,7 @@ pub struct InstructionIndex(pub u16);
 pub struct AttributeInfo {
     pub attribute_name_index: ConstantPoolIndexRaw<Utf8Constant>,
     pub attribute_length: u32,
-    pub info: Vec<u8>,
+    pub info: Range<usize>,
 }
 
 #[derive(Clone, Debug)]

@@ -1,27 +1,29 @@
+use nom::bytes::complete::take;
 use nom::error::ErrorKind;
 use nom::number::complete::{be_u16, be_u32, be_u8};
-use nom::{Err, IResult};
+use nom::{Err, IResult, Slice};
 
 use crate::attribute_info::types::StackMapFrame::*;
 use crate::attribute_info::*;
 
+use crate::parser::ParseData;
 use crate::util::constant_pool_index_raw;
 
-pub fn attribute_parser(input: &[u8]) -> IResult<&[u8], AttributeInfo> {
-    do_parse!(
-        input,
-        attribute_name_index: constant_pool_index_raw
-            >> attribute_length: be_u32
-            >> info: take!(attribute_length)
-            >> (AttributeInfo {
-                attribute_name_index,
-                attribute_length,
-                info: info.to_owned(),
-            })
-    )
+pub fn attribute_parser(i: ParseData) -> IResult<ParseData, AttributeInfo> {
+    let (i, attribute_name_index) = constant_pool_index_raw(i)?;
+    let (i, attribute_length) = be_u32(i)?;
+    let (i, info) = take(attribute_length)(i)?;
+    Ok((
+        i,
+        AttributeInfo {
+            attribute_name_index,
+            attribute_length,
+            info: info.as_range(),
+        },
+    ))
 }
 
-pub fn exception_entry_parser(input: &[u8]) -> IResult<&[u8], ExceptionEntry> {
+pub fn exception_entry_parser(input: ParseData) -> IResult<ParseData, ExceptionEntry> {
     do_parse!(
         input,
         start_pc: be_u16
@@ -37,7 +39,7 @@ pub fn exception_entry_parser(input: &[u8]) -> IResult<&[u8], ExceptionEntry> {
     )
 }
 
-pub fn code_attribute_parser(input: &[u8]) -> IResult<&[u8], CodeAttribute> {
+pub fn code_attribute_parser(input: ParseData) -> IResult<ParseData, CodeAttribute> {
     do_parse!(
         input,
         max_stack: be_u16
@@ -52,7 +54,7 @@ pub fn code_attribute_parser(input: &[u8]) -> IResult<&[u8], CodeAttribute> {
                 max_stack,
                 max_locals,
                 code_length,
-                code: code.to_owned(),
+                code: code.data().to_owned(),
                 exception_table_length,
                 exception_table,
                 attributes_count,
@@ -61,14 +63,14 @@ pub fn code_attribute_parser(input: &[u8]) -> IResult<&[u8], CodeAttribute> {
     )
 }
 
-fn same_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
+fn same_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
     value!(input, SameFrame { frame_type })
 }
 
-fn verification_type_parser(input: &[u8]) -> IResult<&[u8], VerificationTypeInfo> {
+fn verification_type_parser(input: ParseData) -> IResult<ParseData, VerificationTypeInfo> {
     use self::VerificationTypeInfo::*;
-    let v = input[0];
-    let new_input = &input[1..];
+    let v = input.data()[0];
+    let new_input = input.slice(1..);
     match v {
         0 => Ok((new_input, Top)),
         1 => Ok((new_input, Integer)),
@@ -87,9 +89,9 @@ fn verification_type_parser(input: &[u8]) -> IResult<&[u8], VerificationTypeInfo
 }
 
 fn same_locals_1_stack_item_frame_parser(
-    input: &[u8],
+    input: ParseData,
     frame_type: u8,
-) -> IResult<&[u8], StackMapFrame> {
+) -> IResult<ParseData, StackMapFrame> {
     do_parse!(
         input,
         stack: verification_type_parser >> (SameLocals1StackItemFrame { frame_type, stack })
@@ -97,9 +99,9 @@ fn same_locals_1_stack_item_frame_parser(
 }
 
 fn same_locals_1_stack_item_frame_extended_parser(
-    input: &[u8],
+    input: ParseData,
     frame_type: u8,
-) -> IResult<&[u8], StackMapFrame> {
+) -> IResult<ParseData, StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -112,7 +114,7 @@ fn same_locals_1_stack_item_frame_extended_parser(
     )
 }
 
-fn chop_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
+fn chop_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -123,7 +125,10 @@ fn chop_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFra
     )
 }
 
-fn same_frame_extended_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
+fn same_frame_extended_parser(
+    input: ParseData,
+    frame_type: u8,
+) -> IResult<ParseData, StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -134,7 +139,7 @@ fn same_frame_extended_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], St
     )
 }
 
-fn append_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
+fn append_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -147,7 +152,7 @@ fn append_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapF
     )
 }
 
-fn full_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
+fn full_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
     do_parse!(
         input,
         offset_delta: be_u16
@@ -166,7 +171,7 @@ fn full_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFra
     )
 }
 
-fn stack_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFrame> {
+fn stack_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
     match frame_type {
         0..=63 => same_frame_parser(input, frame_type),
         64..=127 => same_locals_1_stack_item_frame_parser(input, frame_type),
@@ -179,12 +184,14 @@ fn stack_frame_parser(input: &[u8], frame_type: u8) -> IResult<&[u8], StackMapFr
     }
 }
 
-fn stack_map_frame_entry_parser(i: &[u8]) -> IResult<&[u8], StackMapFrame> {
+fn stack_map_frame_entry_parser(i: ParseData) -> IResult<ParseData, StackMapFrame> {
     let (i, frame_type) = be_u8(i)?;
     stack_frame_parser(i, frame_type)
 }
 
-pub fn stack_map_table_attribute_parser(input: &[u8]) -> IResult<&[u8], StackMapTableAttribute> {
+pub fn stack_map_table_attribute_parser(
+    input: ParseData,
+) -> IResult<ParseData, StackMapTableAttribute> {
     do_parse!(
         input,
         number_of_entries: be_u16
@@ -196,7 +203,7 @@ pub fn stack_map_table_attribute_parser(input: &[u8]) -> IResult<&[u8], StackMap
     )
 }
 
-pub fn exceptions_attribute_parser(input: &[u8]) -> IResult<&[u8], ExceptionsAttribute> {
+pub fn exceptions_attribute_parser(input: ParseData) -> IResult<ParseData, ExceptionsAttribute> {
     do_parse!(
         input,
         exception_table_length: be_u16
@@ -208,7 +215,9 @@ pub fn exceptions_attribute_parser(input: &[u8]) -> IResult<&[u8], ExceptionsAtt
     )
 }
 
-pub fn constant_value_attribute_parser(input: &[u8]) -> IResult<&[u8], ConstantValueAttribute> {
+pub fn constant_value_attribute_parser(
+    input: ParseData,
+) -> IResult<ParseData, ConstantValueAttribute> {
     do_parse!(
         input,
         constant_value_index: be_u16
@@ -218,7 +227,7 @@ pub fn constant_value_attribute_parser(input: &[u8]) -> IResult<&[u8], ConstantV
     )
 }
 
-fn bootstrap_method_parser(input: &[u8]) -> IResult<&[u8], BootstrapMethod> {
+fn bootstrap_method_parser(input: ParseData) -> IResult<ParseData, BootstrapMethod> {
     do_parse!(
         input,
         bootstrap_method_ref: be_u16
@@ -233,8 +242,8 @@ fn bootstrap_method_parser(input: &[u8]) -> IResult<&[u8], BootstrapMethod> {
 }
 
 pub fn bootstrap_methods_attribute_parser(
-    input: &[u8],
-) -> IResult<&[u8], BootstrapMethodsAttribute> {
+    input: ParseData,
+) -> IResult<ParseData, BootstrapMethodsAttribute> {
     do_parse!(
         input,
         num_bootstrap_methods: be_u16
@@ -246,7 +255,7 @@ pub fn bootstrap_methods_attribute_parser(
     )
 }
 
-pub fn sourcefile_attribute_parser(input: &[u8]) -> IResult<&[u8], SourceFileAttribute> {
+pub fn sourcefile_attribute_parser(input: ParseData) -> IResult<ParseData, SourceFileAttribute> {
     do_parse!(
         input,
         attribute_name_index: be_u16

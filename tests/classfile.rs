@@ -3,11 +3,12 @@ extern crate nom;
 
 use classfile_parser::class_parser;
 use classfile_parser::constant_info::ConstantInfo;
+use classfile_parser::parser::ParseData;
 
 #[test]
 fn test_valid_class() {
     let valid_class = include_bytes!("../java-assets/compiled-classes/BasicClass.class");
-    let res = class_parser(valid_class);
+    let res = class_parser(ParseData::new(valid_class));
     match res {
         Result::Ok((_, c)) => {
             println!("Valid class file, version {:?}, const_pool({}), this=const[{:?}], super=const[{:?}], interfaces({}), fields({}), methods({}), attributes({}), access({:?})", c.version, c.const_pool_size, c.this_class, c.super_class, c.interfaces_count, c.fields_count, c.methods_count, c.attributes_count, c.access_flags);
@@ -57,8 +58,9 @@ fn test_valid_class() {
                 for a in &m.attributes {
                     if a.attribute_name_index.0 == code_const_index {
                         println!("\t\tCode attr found, len = {}", a.attribute_length);
-                        let code_result =
-                            classfile_parser::attribute_info::code_attribute_parser(&a.info);
+                        let code_result = classfile_parser::attribute_info::code_attribute_parser(
+                            ParseData::from_range(valid_class, a.info.clone()),
+                        );
                         match code_result {
                             Result::Ok((_, code)) => {
                                 println!("\t\t\tCode! code_length = {}", code.code_length);
@@ -78,7 +80,7 @@ fn test_valid_class() {
 #[test]
 fn test_utf_string_constants() {
     let valid_class = include_bytes!("../java-assets/compiled-classes/UnicodeStrings.class");
-    let res = class_parser(valid_class);
+    let res = class_parser(ParseData::new(valid_class));
     match res {
         Result::Ok((_, c)) => {
             let mut found_utf_maths_string = false;
@@ -125,7 +127,7 @@ fn test_utf_string_constants() {
 #[test]
 fn test_malformed_class() {
     let malformed_class = include_bytes!("../java-assets/compiled-classes/malformed.class");
-    let res = class_parser(malformed_class);
+    let res = class_parser(ParseData::new(malformed_class));
     if let Result::Ok((_, _)) = res {
         panic!("The file is not valid and shouldn't be parsed")
     };

@@ -1,7 +1,7 @@
 use nom::{number::complete::be_u16, IResult};
 use smallvec::SmallVec;
 
-use crate::constant_pool::ConstantPoolIndexRaw;
+use crate::{constant_pool::ConstantPoolIndexRaw, parser::ParseData};
 
 #[macro_export]
 macro_rules! impl_from {
@@ -58,7 +58,9 @@ macro_rules! impl_from_try_reverse {
     };
 }
 
-pub(crate) fn constant_pool_index_raw<T>(i: &[u8]) -> IResult<&[u8], ConstantPoolIndexRaw<T>> {
+pub(crate) fn constant_pool_index_raw<T>(
+    i: ParseData,
+) -> IResult<ParseData, ConstantPoolIndexRaw<T>> {
     let (i, v) = be_u16(i)?;
     Ok((i, ConstantPoolIndexRaw::new(v)))
 }

@@ -22,6 +22,7 @@ pub mod constant_pool;
 pub mod descriptor;
 
 pub use parser::class_parser;
+use parser::ParseData;
 pub use types::*;
 
 mod util;
@@ -54,7 +55,7 @@ pub fn parse_class(class_name: &str) -> Result<ClassFile, String> {
         return Err(format!("Unable to read {}: {}", display, &why.to_string()));
     }
 
-    let parsed_class = class_parser(&class_bytes);
+    let parsed_class = class_parser(ParseData::new(&class_bytes));
     match parsed_class {
         Ok((_, c)) => Ok(c),
         _ => Err("Failed to parse class?".to_string()),

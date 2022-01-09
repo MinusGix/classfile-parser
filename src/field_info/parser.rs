@@ -5,9 +5,10 @@ use crate::attribute_info::attribute_parser;
 
 use crate::field_info::{FieldAccessFlags, FieldInfo};
 
+use crate::parser::ParseData;
 use crate::util::{constant_pool_index_raw, count_sv};
 
-pub fn field_parser(i: &[u8]) -> IResult<&[u8], FieldInfo> {
+pub fn field_parser(i: ParseData) -> IResult<ParseData, FieldInfo> {
     let (i, access_flags) = be_u16(i)?;
     let (i, name_index) = constant_pool_index_raw(i)?;
     let (i, descriptor_index) = constant_pool_index_raw(i)?;

@@ -1,12 +1,12 @@
 extern crate classfile_parser;
 extern crate nom;
 
-use classfile_parser::class_parser;
+use classfile_parser::{class_parser, parser::ParseData};
 
 #[test]
 fn test_attribute_stack_map_table() {
-    let stack_map_class = include_bytes!("../java-assets/compiled-classes/Factorial.class");
-    let res = class_parser(stack_map_class);
+    let stack_map_class: &[u8] = include_bytes!("../java-assets/compiled-classes/Factorial.class");
+    let res = class_parser(ParseData::new(stack_map_class));
     match res {
         Result::Ok((_, c)) => {
             use classfile_parser::attribute_info::code_attribute_parser;
@@ -19,13 +19,19 @@ fn test_attribute_stack_map_table() {
             assert_eq!(method.attributes.len(), 1);
             assert_eq!(method.attributes.len(), method.attributes_count as usize);
 
-            let code = match code_attribute_parser(&method.attributes[0].info) {
+            let code = match code_attribute_parser(ParseData::from_range(
+                stack_map_class,
+                method.attributes[0].info.clone(),
+            )) {
                 Result::Ok((_, c)) => c,
                 _ => panic!("Could not get code attribute"),
             };
             assert_eq!(code.attributes_count, 1);
 
-            let p = stack_map_table_attribute_parser(&code.attributes[0].info);
+            let p = stack_map_table_attribute_parser(ParseData::from_range(
+                stack_map_class,
+                code.attributes[0].info.clone(),
+            ));
             match p {
                 Result::Ok((data, a)) => {
                     assert!(data.is_empty());
