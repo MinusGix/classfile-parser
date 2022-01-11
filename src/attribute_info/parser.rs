@@ -7,7 +7,7 @@ use crate::attribute_info::types::StackMapFrame::*;
 use crate::attribute_info::*;
 
 use crate::parser::ParseData;
-use crate::util::constant_pool_index_raw;
+use crate::util::{constant_pool_index_raw, count_sv};
 
 pub fn attribute_parser(i: ParseData) -> IResult<ParseData, AttributeInfo> {
     let (i, attribute_name_index) = constant_pool_index_raw(i)?;
@@ -139,36 +139,36 @@ fn same_frame_extended_parser(
     )
 }
 
-fn append_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
-    do_parse!(
-        input,
-        offset_delta: be_u16
-            >> locals: count!(verification_type_parser, (frame_type - 251) as usize)
-            >> (AppendFrame {
-                frame_type,
-                offset_delta,
-                locals
-            })
-    )
+fn append_frame_parser(i: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
+    let (i, offset_delta) = be_u16(i)?;
+    let (i, locals) = count_sv(verification_type_parser, (frame_type - 251) as usize)(i)?;
+    Ok((
+        i,
+        AppendFrame {
+            frame_type,
+            offset_delta,
+            locals,
+        },
+    ))
 }
 
-fn full_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
-    do_parse!(
-        input,
-        offset_delta: be_u16
-            >> number_of_locals: be_u16
-            >> locals: count!(verification_type_parser, number_of_locals as usize)
-            >> number_of_stack_items: be_u16
-            >> stack: count!(verification_type_parser, number_of_stack_items as usize)
-            >> (FullFrame {
-                frame_type,
-                offset_delta,
-                number_of_locals,
-                locals,
-                number_of_stack_items,
-                stack,
-            })
-    )
+fn full_frame_parser(i: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {
+    let (i, offset_delta) = be_u16(i)?;
+    let (i, number_of_locals) = be_u16(i)?;
+    let (i, locals) = count_sv(verification_type_parser, number_of_locals as usize)(i)?;
+    let (i, number_of_stack_items) = be_u16(i)?;
+    let (i, stack) = count_sv(verification_type_parser, number_of_stack_items as usize)(i)?;
+    Ok((
+        i,
+        FullFrame {
+            frame_type,
+            offset_delta,
+            number_of_locals,
+            locals,
+            number_of_stack_items,
+            stack,
+        },
+    ))
 }
 
 fn stack_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {

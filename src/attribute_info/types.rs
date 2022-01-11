@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use smallvec::SmallVec;
+
 use crate::{
     constant_info::{ClassConstant, Utf8Constant},
     constant_pool::ConstantPoolIndexRaw,
@@ -85,15 +87,15 @@ pub enum StackMapFrame {
     AppendFrame {
         frame_type: u8,
         offset_delta: u16,
-        locals: Vec<VerificationTypeInfo>,
+        locals: SmallVec<[VerificationTypeInfo; 10]>,
     },
     FullFrame {
         frame_type: u8,
         offset_delta: u16,
         number_of_locals: u16,
-        locals: Vec<VerificationTypeInfo>,
+        locals: SmallVec<[VerificationTypeInfo; 6]>,
         number_of_stack_items: u16,
-        stack: Vec<VerificationTypeInfo>,
+        stack: SmallVec<[VerificationTypeInfo; 4]>,
     },
 }
 
