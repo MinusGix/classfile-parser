@@ -11,7 +11,7 @@ use nom::{
 
 use crate::attribute_info::{attribute_parser, skip_attribute_parser};
 use crate::constant_info::constant_parser;
-use crate::field_info::field_parser;
+use crate::field_info::{field_parser, skip_field_parser};
 use crate::method_info::{method_parser, skip_method_parser};
 use crate::types::{ClassAccessFlags, ClassFile};
 use crate::{ClassFileOpt, ClassFileVersion, OptSmallVec};
@@ -112,7 +112,9 @@ pub fn class_parser_opt(i: ParseData) -> IResult<ParseData, ClassFileOpt> {
     let (i, interfaces) = count_sv(constant_pool_index_raw, interfaces_count.into())(i)?;
 
     let (i, fields_count) = be_u16(i)?;
-    let (i, fields) = count_sv(field_parser, fields_count.into())(i)?;
+    let fields_start = i.pos();
+    let (i, _) = skip_count(skip_field_parser, fields_count.into())(i)?;
+    let fields = OptSmallVec::empty(fields_start, fields_count);
 
     let (i, methods_count) = be_u16(i)?;
     let methods_start = i.pos();
@@ -138,7 +140,6 @@ pub fn class_parser_opt(i: ParseData) -> IResult<ParseData, ClassFileOpt> {
             super_class,
             interfaces_count,
             interfaces,
-            fields_count,
             fields,
             methods,
             attributes,

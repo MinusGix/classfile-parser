@@ -1,12 +1,22 @@
 use nom::number::complete::be_u16;
 use nom::IResult;
 
-use crate::attribute_info::attribute_parser;
+use crate::attribute_info::{attribute_parser, skip_attribute_parser};
 
+use crate::constant_info::ConstantInfo;
 use crate::field_info::{FieldAccessFlags, FieldInfo};
 
 use crate::parser::ParseData;
-use crate::util::{constant_pool_index_raw, count_sv};
+use crate::util::{constant_pool_index_raw, count_sv, skip_count};
+
+pub fn skip_field_parser(i: ParseData) -> IResult<ParseData, ()> {
+    let (i, _) = be_u16(i)?;
+    let (i, _) = constant_pool_index_raw::<ConstantInfo>(i)?;
+    let (i, _) = constant_pool_index_raw::<ConstantInfo>(i)?;
+    let (i, attributes_count) = be_u16(i)?;
+    let (i, _) = skip_count(skip_attribute_parser, attributes_count.into())(i)?;
+    Ok((i, ()))
+}
 
 pub fn field_parser(i: ParseData) -> IResult<ParseData, FieldInfo> {
     let (i, access_flags) = be_u16(i)?;

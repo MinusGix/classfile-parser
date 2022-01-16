@@ -108,13 +108,13 @@ pub struct ClassFileOpt {
     pub super_class: ConstantPoolIndexRaw<ClassConstant>,
     pub interfaces_count: u16,
     pub interfaces: SmallVec<[ConstantPoolIndexRaw<ClassConstant>; 4]>,
-    pub fields_count: u16,
-    pub fields: SmallVec<[FieldInfo; 6]>,
+    pub fields: OptSmallVec<6, FieldInfo>,
     pub methods: OptSmallVec<6, MethodInfo>,
     pub attributes: OptSmallVec<4, AttributeInfo>,
 }
 impl ClassFileOpt {
     // TODO: Return more useful errors
+    // TODO: Methods for loading class file attributes
 
     /// Loads a method at a given index
     /// Returns the value in cache if there was one
