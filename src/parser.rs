@@ -9,15 +9,15 @@ use nom::{
     Needed, Slice, UnspecializedInput,
 };
 
-use crate::attribute_info::attribute_parser;
+use crate::attribute_info::{attribute_parser, skip_attribute_parser};
 use crate::constant_info::constant_parser;
 use crate::field_info::field_parser;
-use crate::method_info::method_parser;
+use crate::method_info::{method_parser, skip_method_parser};
 use crate::types::{ClassAccessFlags, ClassFile};
-use crate::ClassFileVersion;
+use crate::{ClassFileOpt, ClassFileVersion, OptSmallVec};
 
 use crate::constant_pool::ConstantPool;
-use crate::util::{constant_pool_index_raw, count_sv};
+use crate::util::{constant_pool_index_raw, count_sv, skip_count};
 
 // named!(magic_parser, tag!(&[0xCA, 0xFE, 0xBA, 0xBE]));
 
@@ -94,6 +94,58 @@ pub fn class_parser(i: ParseData) -> IResult<ParseData, ClassFile> {
     ))
 }
 
+pub fn class_parser_opt(i: ParseData) -> IResult<ParseData, ClassFileOpt> {
+    let (i, _) = magic_parser(i)?;
+
+    let (i, minor_version) = be_u16(i)?;
+    let (i, major_version) = be_u16(i)?;
+
+    let (i, const_pool_size) = be_u16(i)?;
+    let (i, const_pool) = constant_parser(i, (const_pool_size - 1).into())?;
+
+    let (i, access_flags) = be_u16(i)?;
+
+    let (i, this_class) = constant_pool_index_raw(i)?;
+    let (i, super_class) = constant_pool_index_raw(i)?;
+
+    let (i, interfaces_count) = be_u16(i)?;
+    let (i, interfaces) = count_sv(constant_pool_index_raw, interfaces_count.into())(i)?;
+
+    let (i, fields_count) = be_u16(i)?;
+    let (i, fields) = count_sv(field_parser, fields_count.into())(i)?;
+
+    let (i, methods_count) = be_u16(i)?;
+    let methods_start = i.pos();
+    let (i, _) = skip_count(skip_method_parser, methods_count.into())(i)?;
+    let methods = OptSmallVec::empty(methods_start, methods_count);
+
+    let (i, attributes_count) = be_u16(i)?;
+    let attributes_start = i.pos();
+    let (i, _) = skip_count(skip_attribute_parser, attributes_count.into())(i)?;
+    let attributes = OptSmallVec::empty(attributes_start, attributes_count);
+
+    Ok((
+        i,
+        ClassFileOpt {
+            version: ClassFileVersion {
+                major: major_version,
+                minor: minor_version,
+            },
+            const_pool_size,
+            const_pool: ConstantPool::new(const_pool),
+            access_flags: ClassAccessFlags::from_bits_truncate(access_flags),
+            this_class,
+            super_class,
+            interfaces_count,
+            interfaces,
+            fields_count,
+            fields,
+            methods,
+            attributes,
+        },
+    ))
+}
+
 /// Keeps track of the current slice and the position within the actual data that we're at
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseData<'a> {
@@ -105,6 +157,13 @@ pub struct ParseData<'a> {
 impl<'a> ParseData<'a> {
     pub fn new(data: &'a [u8]) -> ParseData<'a> {
         ParseData { data, pos: 0 }
+    }
+
+    pub fn from_pos(data: &'a [u8], pos: usize) -> ParseData<'a> {
+        ParseData {
+            data: &data[pos..],
+            pos,
+        }
     }
 
     /// Create ParseData where the data is the entirety of it and the Range is a range created
@@ -140,36 +199,6 @@ impl<'a> AsBytes for ParseData<'a> {
         self.data
     }
 }
-// impl<'a> Compare<ParseData<'a>> for ParseData<'a> {
-//     fn compare(&self, t: ParseData<'a>) -> nom::CompareResult {
-//         if self.data == t.data && self.pos == t.pos {
-//             nom::CompareResult::Ok
-//         } else {
-//             nom::CompareResult::Error
-//         }
-//     }
-
-//     fn compare_no_case(&self, t: ParseData<'a>) -> nom::CompareResult {
-//         self.compare(t)
-//     }
-// }
-// impl<'a, 'b> Compare<&'b [u8]> for ParseData<'a> {
-//     fn compare(&self, t: &'b [u8]) -> nom::CompareResult {
-//         if self.data == t {
-//             nom::CompareResult::Ok
-//         } else {
-//             nom::CompareResult::Error
-//         }
-//     }
-
-//     fn compare_no_case(&self, t: &'b [u8]) -> nom::CompareResult {
-//         if self.data == t {
-//             nom::CompareResult::Ok
-//         } else {
-//             nom::CompareResult::Error
-//         }
-//     }
-// }
 impl<'a> ExtendInto for ParseData<'a> {
     type Item = u8;
 

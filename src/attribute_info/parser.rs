@@ -6,8 +6,16 @@ use nom::{Err, IResult, Slice};
 use crate::attribute_info::types::StackMapFrame::*;
 use crate::attribute_info::*;
 
+use crate::constant_info::ConstantInfo;
 use crate::parser::ParseData;
 use crate::util::{constant_pool_index_raw, count_sv};
+
+pub fn skip_attribute_parser(i: ParseData) -> IResult<ParseData, ()> {
+    let (i, _) = constant_pool_index_raw::<ConstantInfo>(i)?;
+    let (i, attribute_length) = be_u32(i)?;
+    let (i, _) = take(attribute_length)(i)?;
+    Ok((i, ()))
+}
 
 pub fn attribute_parser(i: ParseData) -> IResult<ParseData, AttributeInfo> {
     let (i, attribute_name_index) = constant_pool_index_raw(i)?;

@@ -13,6 +13,25 @@ pub struct MethodInfo {
     pub attributes: SmallVec<[AttributeInfo; 4]>,
 }
 
+// TODO: Make MethodInfoOpt a field of MethodInfo?
+#[derive(Clone, Debug)]
+pub struct MethodInfoOpt {
+    pub access_flags: MethodAccessFlags,
+    pub name_index: ConstantPoolIndexRaw<Utf8Constant>,
+    pub descriptor_index: ConstantPoolIndexRaw<Utf8Constant>,
+    pub attributes_count: u16,
+}
+impl MethodInfoOpt {
+    pub fn from_method_info(m: &MethodInfo) -> MethodInfoOpt {
+        MethodInfoOpt {
+            access_flags: m.access_flags,
+            name_index: m.name_index,
+            descriptor_index: m.descriptor_index,
+            attributes_count: m.attributes_count,
+        }
+    }
+}
+
 bitflags! {
     pub struct MethodAccessFlags: u16 {
         const PUBLIC = 0x0001;       // 	Declared public; may be accessed from outside its package.

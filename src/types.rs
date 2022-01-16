@@ -1,9 +1,17 @@
+use std::borrow::Cow;
+use std::ops::Range;
+
 use smallvec::SmallVec;
 
 use crate::attribute_info::AttributeInfo;
 use crate::field_info::FieldInfo;
-use crate::method_info::MethodInfo;
+use crate::method_info::{
+    method_attributes_search_parser, method_opt_parser, method_parser,
+    skip_method_attributes_parser, skip_method_parser, MethodInfo, MethodInfoOpt,
+};
 
+use crate::parser::ParseData;
+use crate::util::{count_sv, skip_count};
 use crate::{
     constant_info::ClassConstant,
     constant_pool::{ConstantPool, ConstantPoolIndexRaw},
@@ -59,6 +67,19 @@ impl ClassFileVersion {
     }
 }
 
+bitflags! {
+    pub struct ClassAccessFlags: u16 {
+        const PUBLIC = 0x0001;     //	Declared public; may be accessed from outside its package.
+        const FINAL = 0x0010;      //	Declared final; no subclasses allowed.
+        const SUPER = 0x0020;      //	Treat superclass methods specially when invoked by the invokespecial instruction.
+        const INTERFACE = 0x0200;  //	Is an interface, not a class.
+        const ABSTRACT = 0x0400;   //	Declared abstract; must not be instantiated.
+        const SYNTHETIC = 0x1000;  //	Declared synthetic; not present in the source code.
+        const ANNOTATION = 0x2000; //	Declared as an annotation type.
+        const ENUM = 0x4000;       //	Declared as an enum type.
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ClassFile {
     pub version: ClassFileVersion,
@@ -77,15 +98,224 @@ pub struct ClassFile {
     pub attributes: SmallVec<[AttributeInfo; 4]>,
 }
 
-bitflags! {
-    pub struct ClassAccessFlags: u16 {
-        const PUBLIC = 0x0001;     //	Declared public; may be accessed from outside its package.
-        const FINAL = 0x0010;      //	Declared final; no subclasses allowed.
-        const SUPER = 0x0020;      //	Treat superclass methods specially when invoked by the invokespecial instruction.
-        const INTERFACE = 0x0200;  //	Is an interface, not a class.
-        const ABSTRACT = 0x0400;   //	Declared abstract; must not be instantiated.
-        const SYNTHETIC = 0x1000;  //	Declared synthetic; not present in the source code.
-        const ANNOTATION = 0x2000; //	Declared as an annotation type.
-        const ENUM = 0x4000;       //	Declared as an enum type.
+#[derive(Clone, Debug)]
+pub struct ClassFileOpt {
+    pub version: ClassFileVersion,
+    pub const_pool_size: u16,
+    pub const_pool: ConstantPool,
+    pub access_flags: ClassAccessFlags,
+    pub this_class: ConstantPoolIndexRaw<ClassConstant>,
+    pub super_class: ConstantPoolIndexRaw<ClassConstant>,
+    pub interfaces_count: u16,
+    pub interfaces: SmallVec<[ConstantPoolIndexRaw<ClassConstant>; 4]>,
+    pub fields_count: u16,
+    pub fields: SmallVec<[FieldInfo; 6]>,
+    pub methods: OptSmallVec<6, MethodInfo>,
+    pub attributes: OptSmallVec<4, AttributeInfo>,
+}
+impl ClassFileOpt {
+    // TODO: Return more useful errors
+
+    /// Loads a method at a given index
+    /// Returns the value in cache if there was one
+    /// Returns an owned value if there wasn't, and does not insert into cache
+    /// If there was an error, it returns None
+    pub fn load_method_at(&self, data: &[u8], index: u16) -> Option<Cow<MethodInfo>> {
+        if !self.methods.contains_index(index) {
+            return None;
+        }
+
+        if let Some(method) = self.methods.get_opt(index) {
+            return Some(Cow::Borrowed(method));
+        }
+
+        let start_pos = self.methods.start_pos();
+        let input = ParseData::from_pos(data, start_pos);
+        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input).ok()?;
+
+        method_parser(input).ok().map(|x| Cow::Owned(x.1))
+    }
+
+    /// Loads a method at a given index
+    /// This returns the Opt version, which does not have attributes, which is cheaper
+    /// Returns the value in cache if there was one
+    /// Returns and owned value if there wasn't, and does not insert into cache
+    /// It also returns the index of the data directly after it, aka the attributes count
+    /// If there was an error, it returns None
+    pub fn load_method_opt_at(&self, data: &[u8], index: u16) -> Option<MethodInfoOpt> {
+        if !self.methods.contains_index(index) {
+            return None;
+        }
+
+        if let Some(method) = self.methods.get_opt(index) {
+            return Some(MethodInfoOpt::from_method_info(method));
+        }
+
+        let start_pos = self.methods.start_pos();
+        let input = ParseData::from_pos(data, start_pos);
+        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input).ok()?;
+
+        method_opt_parser(input).ok().map(|(_, method)| method)
+    }
+
+    /// This is guaranteed to be in order
+    pub fn load_method_opt_iter<'a>(
+        &'a self,
+        data: &'a [u8],
+    ) -> impl Iterator<Item = MethodInfoOpt> + 'a {
+        let start_pos = self.methods.start_pos();
+        if let Some(methods) = self.methods.data() {
+            return MethodOptIter::Methods(methods);
+        }
+
+        let input = ParseData::from_pos(data, start_pos);
+        MethodOptIter::Parse(input)
+    }
+
+    /// Does not load all methods if they're already loaded
+    /// Returns None on error
+    pub fn load_all_methods_mut(&mut self, data: &[u8]) -> Option<()> {
+        if self.methods.has_data() {
+            return Some(());
+        }
+
+        let start_pos = self.methods.start_pos();
+        let input = ParseData::from_pos(data, start_pos);
+        let (_, methods) = count_sv(method_parser, self.methods.len())(input).ok()?;
+
+        self.methods.fill(methods);
+
+        Some(())
+    }
+
+    /// Loads the method at the given index and tries to find an attribute, if it exists, with the
+    /// given name
+    pub fn load_method_attribute_info_at_with_name<'a>(
+        &self,
+        data: &'a [u8],
+        index: u16,
+        name: &str,
+    ) -> Result<Option<Range<usize>>, ()> {
+        let (attr_info_start, method) = {
+            // TODO: This could do slightly better
+            let start_pos = self.methods.start_pos();
+            let input = ParseData::from_pos(data, start_pos);
+            let (input, _) =
+                skip_count(skip_method_parser, usize::from(index))(input).map_err(|_| ())?;
+
+            method_opt_parser(input)
+                .ok()
+                .map(|(i, method)| (i.pos(), method))
+        }
+        .ok_or(())?;
+        // TODO: make this for more general usage
+        let input = ParseData::from_pos(data, attr_info_start);
+        let (_, info) = method_attributes_search_parser(
+            input,
+            data,
+            &self.const_pool,
+            name,
+            method.attributes_count,
+        )
+        .map_err(|_| ())?;
+
+        Ok(info)
+    }
+}
+
+enum MethodOptIter<'a, 'c> {
+    Methods(&'a [MethodInfo]),
+    Parse(ParseData<'c>),
+    Error,
+}
+impl<'a, 'c> Iterator for MethodOptIter<'a, 'c> {
+    type Item = MethodInfoOpt;
+
+    // TODO: This code is kinda bad
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            MethodOptIter::Methods(methods) => {
+                if let Some(method) = methods.first() {
+                    *methods = &methods[1..];
+                    Some(MethodInfoOpt::from_method_info(method))
+                } else {
+                    None
+                }
+            }
+            MethodOptIter::Parse(parse) => {
+                let input = parse.clone();
+                if let Ok((input, method_opt)) = method_opt_parser(input) {
+                    if let Ok((input, _)) =
+                        skip_method_attributes_parser(input, method_opt.attributes_count)
+                    {
+                        *parse = input;
+                        Some(method_opt)
+                    } else {
+                        *self = MethodOptIter::Error;
+                        None
+                    }
+                } else {
+                    *self = MethodOptIter::Error;
+                    None
+                }
+            }
+            MethodOptIter::Error => None,
+        }
+    }
+}
+
+/// A small vec that has content that may or may not exist, but includes the position it starts at
+#[derive(Debug, Clone)]
+pub struct OptSmallVec<const N: usize, T> {
+    start_pos: usize,
+    /// The number of elements that are expected, since most data has this already.
+    count: u16,
+    data: Option<SmallVec<[T; N]>>,
+}
+impl<const N: usize, T> OptSmallVec<N, T> {
+    pub(crate) fn empty(start_pos: usize, count: u16) -> OptSmallVec<N, T> {
+        OptSmallVec {
+            start_pos,
+            count,
+            data: None,
+        }
+    }
+
+    pub fn has_data(&self) -> bool {
+        self.data.is_some()
+    }
+
+    pub fn data(&self) -> Option<&[T]> {
+        self.data.as_ref().map(|x| x.as_slice())
+    }
+
+    pub fn fill(&mut self, data: SmallVec<[T; N]>) {
+        self.data = Some(data);
+    }
+
+    /// The position that the date starts in the file
+    pub fn start_pos(&self) -> usize {
+        self.start_pos
+    }
+
+    /// Returns None if it wouldn't exist
+    /// Also returns None if it isn't yet parsed
+    pub fn get_opt(&self, index: u16) -> Option<&T> {
+        self.data.as_ref().and_then(|x| x.get(usize::from(index)))
+    }
+
+    /// Note that this only tells you if it _would_ contain that index
+    pub fn contains_index(&self, index: u16) -> bool {
+        index < self.count
+    }
+
+    /// Note that this only tells you the number that _would_ exist
+    pub fn len(&self) -> usize {
+        usize::from(self.count)
+    }
+
+    /// Note that this only tells you if it _would_ be empty
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
     }
 }

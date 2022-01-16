@@ -102,3 +102,38 @@ where
         Ok((input, res))
     }
 }
+
+/// Drops any parsed values
+/// Note that you should probably be using custom versions of any complex functions since they might
+/// not get optimized out properly
+pub(crate) fn skip_count<I, O, E, F>(mut f: F, count: usize) -> impl FnMut(I) -> IResult<I, (), E>
+where
+    I: Clone + PartialEq,
+    F: nom::Parser<I, O, E>,
+    E: nom::error::ParseError<I>,
+{
+    move |i: I| {
+        let mut input = i.clone();
+
+        for _ in 0..count {
+            let input_ = input.clone();
+            match f.parse(input_) {
+                Ok((i, _)) => {
+                    input = i;
+                }
+                Err(nom::Err::Error(e)) => {
+                    return Err(nom::Err::Error(E::append(
+                        i,
+                        nom::error::ErrorKind::Count,
+                        e,
+                    )));
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
+        Ok((input, ()))
+    }
+}

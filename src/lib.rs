@@ -22,6 +22,7 @@ pub mod constant_pool;
 pub mod descriptor;
 
 pub use parser::class_parser;
+pub use parser::class_parser_opt;
 use parser::ParseData;
 pub use types::*;
 
