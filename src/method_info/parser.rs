@@ -72,7 +72,7 @@ pub fn method_opt_parser(i: ParseData) -> IResult<ParseData, MethodInfoOpt> {
 // TODO: This method could probably call out to the attribute parser mod instead, so that we don't
 // duplicate the code as much
 /// This returns the range for the given attributes data
-pub fn method_attributes_search_parser<'a>(
+pub fn attributes_search_parser<'a>(
     input: ParseData<'a>,
     class_file_data: &[u8],
     constant_pool: &ConstantPool,

@@ -42,6 +42,17 @@ pub struct CodeAttribute {
     pub attributes: Vec<AttributeInfo>,
 }
 
+#[derive(Clone, Debug)]
+pub struct CodeAttributeOpt {
+    pub max_stack: u16,
+    pub max_locals: u16,
+    pub code_range: Range<usize>,
+    pub exception_table_length: u16,
+    pub exception_table_start: usize,
+    pub attributes_count: u16,
+    pub attributes_start: usize,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum VerificationTypeInfo {
     Top,

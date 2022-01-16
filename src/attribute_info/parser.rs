@@ -8,7 +8,7 @@ use crate::attribute_info::*;
 
 use crate::constant_info::ConstantInfo;
 use crate::parser::ParseData;
-use crate::util::{constant_pool_index_raw, count_sv};
+use crate::util::{constant_pool_index_raw, count_sv, skip_count};
 
 pub fn skip_attribute_parser(i: ParseData) -> IResult<ParseData, ()> {
     let (i, _) = constant_pool_index_raw::<ConstantInfo>(i)?;
@@ -69,6 +69,37 @@ pub fn code_attribute_parser(input: ParseData) -> IResult<ParseData, CodeAttribu
                 attributes,
             })
     )
+}
+
+pub fn code_attribute_opt_parser(i: ParseData) -> IResult<ParseData, CodeAttributeOpt> {
+    let (i, max_stack) = be_u16(i)?;
+    let (i, max_locals) = be_u16(i)?;
+
+    let (i, code_length) = be_u32(i)?;
+    let code_start = i.pos();
+    let (i, _code) = take(code_length)(i)?;
+    let code_range = code_start..(code_start + code_length as usize);
+
+    let (i, exception_table_length) = be_u16(i)?;
+    let exception_table_start = i.pos();
+    let (i, _) = skip_count(exception_entry_parser, usize::from(exception_table_length))(i)?;
+
+    let (i, attributes_count) = be_u16(i)?;
+    let attributes_start = i.pos();
+    let (i, _) = skip_count(skip_attribute_parser, usize::from(attributes_count))(i)?;
+
+    Ok((
+        i,
+        CodeAttributeOpt {
+            max_stack,
+            max_locals,
+            code_range,
+            exception_table_length,
+            exception_table_start,
+            attributes_count,
+            attributes_start,
+        },
+    ))
 }
 
 fn same_frame_parser(input: ParseData, frame_type: u8) -> IResult<ParseData, StackMapFrame> {

@@ -6,8 +6,8 @@ use smallvec::SmallVec;
 use crate::attribute_info::AttributeInfo;
 use crate::field_info::FieldInfo;
 use crate::method_info::{
-    method_attributes_search_parser, method_opt_parser, method_parser,
-    skip_method_attributes_parser, skip_method_parser, MethodInfo, MethodInfoOpt,
+    attributes_search_parser, method_opt_parser, method_parser, skip_method_attributes_parser,
+    skip_method_parser, MethodInfo, MethodInfoOpt,
 };
 
 use crate::parser::ParseData;
@@ -210,14 +210,9 @@ impl ClassFileOpt {
         .ok_or(())?;
         // TODO: make this for more general usage
         let input = ParseData::from_pos(data, attr_info_start);
-        let (_, info) = method_attributes_search_parser(
-            input,
-            data,
-            &self.const_pool,
-            name,
-            method.attributes_count,
-        )
-        .map_err(|_| ())?;
+        let (_, info) =
+            attributes_search_parser(input, data, &self.const_pool, name, method.attributes_count)
+                .map_err(|_| ())?;
 
         Ok(info)
     }
