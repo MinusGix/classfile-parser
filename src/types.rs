@@ -181,7 +181,7 @@ impl ClassFileOpt {
 
         let start_pos = self.methods.start_pos();
         let input = ParseData::from_pos(data, start_pos);
-        let (_, methods) = count_sv(method_parser, self.methods.len())(input).ok()?;
+        let (_, methods) = count_sv(method_parser, usize::from(self.methods.len()))(input).ok()?;
 
         self.methods.fill(methods);
 
@@ -310,8 +310,8 @@ impl<const N: usize, T> OptSmallVec<N, T> {
     }
 
     /// Note that this only tells you the number that _would_ exist
-    pub fn len(&self) -> usize {
-        usize::from(self.count)
+    pub fn len(&self) -> u16 {
+        self.count
     }
 
     /// Note that this only tells you if it _would_ be empty
