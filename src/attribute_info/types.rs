@@ -35,11 +35,11 @@ pub struct CodeAttribute {
     pub max_stack: u16,
     pub max_locals: u16,
     pub code_length: u32,
-    pub code: Vec<u8>,
+    pub code: Range<usize>,
     pub exception_table_length: u16,
-    pub exception_table: Vec<ExceptionEntry>,
+    pub exception_table: SmallVec<[ExceptionEntry; 6]>,
     pub attributes_count: u16,
-    pub attributes: Vec<AttributeInfo>,
+    pub attributes: SmallVec<[AttributeInfo; 6]>,
 }
 
 #[derive(Clone, Debug)]

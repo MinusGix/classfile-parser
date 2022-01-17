@@ -47,28 +47,33 @@ pub fn exception_entry_parser(input: ParseData) -> IResult<ParseData, ExceptionE
     )
 }
 
-pub fn code_attribute_parser(input: ParseData) -> IResult<ParseData, CodeAttribute> {
-    do_parse!(
-        input,
-        max_stack: be_u16
-            >> max_locals: be_u16
-            >> code_length: be_u32
-            >> code: take!(code_length)
-            >> exception_table_length: be_u16
-            >> exception_table: count!(exception_entry_parser, exception_table_length as usize)
-            >> attributes_count: be_u16
-            >> attributes: count!(attribute_parser, attributes_count as usize)
-            >> (CodeAttribute {
-                max_stack,
-                max_locals,
-                code_length,
-                code: code.data().to_owned(),
-                exception_table_length,
-                exception_table,
-                attributes_count,
-                attributes,
-            })
-    )
+pub fn code_attribute_parser(i: ParseData) -> IResult<ParseData, CodeAttribute> {
+    let (i, max_stack) = be_u16(i)?;
+    let (i, max_locals) = be_u16(i)?;
+
+    let (i, code_length) = be_u32(i)?;
+    let (i, code) = take(code_length)(i)?;
+
+    let (i, exception_table_length) = be_u16(i)?;
+    let (i, exception_table) =
+        count_sv(exception_entry_parser, usize::from(exception_table_length))(i)?;
+
+    let (i, attributes_count) = be_u16(i)?;
+    let (i, attributes) = count_sv(attribute_parser, usize::from(attributes_count))(i)?;
+
+    Ok((
+        i,
+        CodeAttribute {
+            max_stack,
+            max_locals,
+            code_length,
+            code: code.as_range(),
+            exception_table_length,
+            exception_table,
+            attributes_count,
+            attributes,
+        },
+    ))
 }
 
 pub fn code_attribute_opt_parser(i: ParseData) -> IResult<ParseData, CodeAttributeOpt> {
