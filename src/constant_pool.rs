@@ -1,6 +1,7 @@
 use std::{
     convert::{TryFrom, TryInto},
     marker::PhantomData,
+    rc::Rc,
 };
 
 use crate::constant_info::ConstantInfo;
@@ -89,7 +90,7 @@ impl TryFrom<u16> for ConstantPoolIndex<ConstantInfo> {
 pub struct ConstantPool {
     /// In the jvm, the constant pool starts at 1, so the indices start at one.
     /// But this is indexed starting at zero.
-    pool: Vec<ConstantInfo>,
+    pool: Rc<[ConstantInfo]>,
 }
 impl ConstantPool {
     // Note: The casts from u16 to usize are always fine if the invariant holds,
@@ -98,7 +99,9 @@ impl ConstantPool {
     /// The constant pool has an invariant that it holds at most u16 elements
     pub(crate) fn new(pool: Vec<ConstantInfo>) -> Self {
         assert!(pool.len() <= (u16::MAX as usize));
-        Self { pool }
+        Self {
+            pool: Rc::from(pool),
+        }
     }
 
     pub fn len(&self) -> u16 {
@@ -114,14 +117,6 @@ impl ConstantPool {
         self.pool.get(i.0 as usize)
     }
 
-    pub fn get_mut<T>(
-        &mut self,
-        i: impl TryInto<ConstantPoolIndex<T>>,
-    ) -> Option<&mut ConstantInfo> {
-        let i: ConstantPoolIndex<T> = i.try_into().ok()?;
-        self.pool.get_mut(i.0 as usize)
-    }
-
     pub fn get_t<'a, T>(&'a self, i: impl TryInto<ConstantPoolIndex<T>>) -> Option<&'a T>
     where
         &'a T: TryFrom<&'a ConstantInfo>,
@@ -129,18 +124,6 @@ impl ConstantPool {
         let i: ConstantPoolIndex<T> = i.try_into().ok()?;
         let v: &'a ConstantInfo = self.pool.get(i.0 as usize)?;
         <&'a T>::try_from(v).ok()
-    }
-
-    pub fn get_t_mut<'a, T>(
-        &'a mut self,
-        i: impl TryInto<ConstantPoolIndex<T>>,
-    ) -> Option<&'a mut T>
-    where
-        &'a mut T: TryFrom<&'a mut ConstantInfo>,
-    {
-        let i: ConstantPoolIndex<T> = i.try_into().ok()?;
-        let v: &'a mut ConstantInfo = self.pool.get_mut(i.0 as usize)?;
-        <&'a mut T>::try_from(v).ok()
     }
 
     pub fn iter(&self) -> std::slice::Iter<ConstantInfo> {
