@@ -66,7 +66,7 @@ pub(crate) fn constant_pool_index_raw<T>(
 }
 
 /// Count but for small vec
-pub(crate) fn count_sv<const N: usize, I, O, E, F>(
+pub(crate) fn count_sv<I, O, E, F, const N: usize>(
     mut f: F,
     count: usize,
 ) -> impl FnMut(I) -> IResult<I, SmallVec<[O; N]>, E>

@@ -108,9 +108,9 @@ pub struct ClassFileOpt {
     pub super_class: ConstantPoolIndexRaw<ClassConstant>,
     pub interfaces_count: u16,
     pub interfaces: SmallVec<[ConstantPoolIndexRaw<ClassConstant>; 4]>,
-    pub fields: OptSmallVec<6, FieldInfo>,
-    pub methods: OptSmallVec<6, MethodInfo>,
-    pub attributes: OptSmallVec<4, AttributeInfo>,
+    pub fields: OptSmallVec<FieldInfo, 6>,
+    pub methods: OptSmallVec<MethodInfo, 6>,
+    pub attributes: OptSmallVec<AttributeInfo, 4>,
 }
 impl ClassFileOpt {
     // TODO: Return more useful errors
@@ -261,14 +261,14 @@ impl<'a, 'c> Iterator for MethodOptIter<'a, 'c> {
 
 /// A small vec that has content that may or may not exist, but includes the position it starts at
 #[derive(Debug, Clone)]
-pub struct OptSmallVec<const N: usize, T> {
+pub struct OptSmallVec<T, const N: usize> {
     start_pos: usize,
     /// The number of elements that are expected, since most data has this already.
     count: u16,
     data: Option<SmallVec<[T; N]>>,
 }
-impl<const N: usize, T> OptSmallVec<N, T> {
-    pub(crate) fn empty(start_pos: usize, count: u16) -> OptSmallVec<N, T> {
+impl<T, const N: usize> OptSmallVec<T, N> {
+    pub(crate) fn empty(start_pos: usize, count: u16) -> OptSmallVec<T, N> {
         OptSmallVec {
             start_pos,
             count,
