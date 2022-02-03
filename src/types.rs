@@ -82,6 +82,13 @@ bitflags! {
     }
 }
 
+/// An error in loading data
+#[derive(Debug, Clone)]
+pub enum LoadError {
+    /// Some unknown error
+    Unknown,
+}
+
 #[derive(Clone, Debug)]
 pub struct ClassFile {
     pub version: ClassFileVersion,
@@ -121,21 +128,20 @@ impl ClassFileOpt {
     /// Loads a method at a given index
     /// Returns the value in cache if there was one
     /// Returns an owned value if there wasn't, and does not insert into cache
-    /// If there was an error, it returns None
-    pub fn load_method_at(&self, data: &[u8], index: u16) -> Option<Cow<MethodInfo>> {
+    pub fn load_method_at(&self, data: &[u8], index: u16) -> Result<Cow<MethodInfo>, LoadError> {
         if !self.methods.contains_index(index) {
-            return None;
+            return Err(LoadError::Unknown);
         }
 
         if let Some(method) = self.methods.get_opt(index) {
-            return Some(Cow::Borrowed(method));
+            return Ok(Cow::Borrowed(method));
         }
 
         let start_pos = self.methods.start_pos();
         let input = ParseData::from_pos(data, start_pos);
-        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input).ok()?;
+        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input).map_err(|_| LoadError::Unknown)?;
 
-        method_parser(input).ok().map(|x| Cow::Owned(x.1))
+        method_parser(input).map_err(|_| LoadError::Unknown).map(|x| Cow::Owned(x.1))
     }
 
     /// Loads a method at a given index
@@ -143,21 +149,20 @@ impl ClassFileOpt {
     /// Returns the value in cache if there was one
     /// Returns and owned value if there wasn't, and does not insert into cache
     /// It also returns the index of the data directly after it, aka the attributes count
-    /// If there was an error, it returns None
-    pub fn load_method_opt_at(&self, data: &[u8], index: u16) -> Option<MethodInfoOpt> {
+    pub fn load_method_opt_at(&self, data: &[u8], index: u16) -> Result<MethodInfoOpt, LoadError> {
         if !self.methods.contains_index(index) {
-            return None;
+            return Err(LoadError::Unknown);
         }
 
         if let Some(method) = self.methods.get_opt(index) {
-            return Some(MethodInfoOpt::from_method_info(method));
+            return Ok(MethodInfoOpt::from_method_info(method));
         }
 
         let start_pos = self.methods.start_pos();
         let input = ParseData::from_pos(data, start_pos);
-        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input).ok()?;
+        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input).map_err(|_| LoadError::Unknown)?;
 
-        method_opt_parser(input).ok().map(|(_, method)| method)
+        method_opt_parser(input).map_err(|_|LoadError::Unknown).map(|(_, method)| method)
     }
 
     /// This is guaranteed to be in order
@@ -175,19 +180,18 @@ impl ClassFileOpt {
     }
 
     /// Does not load all methods if they're already loaded
-    /// Returns None on error
-    pub fn load_all_methods_mut(&mut self, data: &[u8]) -> Option<()> {
+    pub fn load_all_methods_mut(&mut self, data: &[u8]) -> Result<(), LoadError> {
         if self.methods.has_data() {
-            return Some(());
+            return Ok(());
         }
 
         let start_pos = self.methods.start_pos();
         let input = ParseData::from_pos(data, start_pos);
-        let (_, methods) = count_sv(method_parser, usize::from(self.methods.len()))(input).ok()?;
+        let (_, methods) = count_sv(method_parser, usize::from(self.methods.len()))(input).map_err(|_| LoadError::Unknown)?;
 
         self.methods.fill(methods);
 
-        Some(())
+        Ok(())
     }
 
     /// Loads the method at the given index and tries to find an attribute, if it exists, with the
@@ -197,24 +201,24 @@ impl ClassFileOpt {
         data: &'a [u8],
         index: u16,
         name: &str,
-    ) -> Result<Option<Range<usize>>, ()> {
+    ) -> Result<Option<Range<usize>>, LoadError> {
         let (attr_info_start, method) = {
             // TODO: This could do slightly better
             let start_pos = self.methods.start_pos();
             let input = ParseData::from_pos(data, start_pos);
             let (input, _) =
-                skip_count(skip_method_parser, usize::from(index))(input).map_err(|_| ())?;
+                skip_count(skip_method_parser, usize::from(index))(input).map_err(|_| LoadError::Unknown)?;
 
             method_opt_parser(input)
                 .ok()
                 .map(|(i, method)| (i.pos(), method))
         }
-        .ok_or(())?;
+        .ok_or(LoadError::Unknown)?;
         // TODO: make this for more general usage
         let input = ParseData::from_pos(data, attr_info_start);
         let (_, info) =
             attributes_search_parser(input, data, &self.const_pool, name, method.attributes_count)
-                .map_err(|_| ())?;
+                .map_err(|_| LoadError::Unknown)?;
         let info = info.map(|x| x.1);
 
         Ok(info)
@@ -222,7 +226,7 @@ impl ClassFileOpt {
 
     // TODO: provide actual error type
     pub fn load_fields_values_iter<'a>(&'a self, data: &'a [u8]) -> 
-        impl Iterator<Item = Result<(FieldInfoOpt, Option<ConstantPoolIndexRaw<ConstantInfo>>), ()>> + 'a {
+        impl Iterator<Item = Result<(FieldInfoOpt, Option<ConstantPoolIndexRaw<ConstantInfo>>), LoadError>> + 'a {
         let start_pos = self.fields.start_pos();
         let count = self.fields.count;
         // TODO: use cached data if it exists
@@ -243,7 +247,7 @@ impl ClassFileOpt {
             let (i, (field, value_index)) = if let Ok((i, f)) = field_opt_value_parser(i, data, &self.const_pool) {
                 (i, f)
             } else {
-                return Some(Err(()));
+                return Some(Err(LoadError::Unknown));
             };
 
             p_input = i;
