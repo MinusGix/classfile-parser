@@ -78,16 +78,16 @@ pub fn attributes_search_parser<'a>(
     constant_pool: &ConstantPool,
     name: &str,
     attributes_count: u16,
-) -> IResult<ParseData<'a>, Option<Range<usize>>> {
+) -> IResult<ParseData<'a>, Option<(u16, Range<usize>)>> {
     let mut input = input;
-    for _ in 0..attributes_count {
+    for cur in 0..attributes_count {
         let (i, name_index) = constant_pool_index_raw::<Utf8Constant>(input)?;
         if let Some(attr_name) = constant_pool.get_t(name_index) {
             let attr_name = attr_name.as_text(class_file_data);
             if Cow::Borrowed(name) == attr_name {
                 let (i, attribute_length) = be_u32(i)?;
                 let (i, info) = take(attribute_length)(i)?;
-                return Ok((i, Some(info.as_range())));
+                return Ok((i, Some((cur, info.as_range()))));
             }
         }
         let (i, attribute_length) = be_u32(i)?;

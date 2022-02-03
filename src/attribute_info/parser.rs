@@ -260,15 +260,12 @@ pub fn exceptions_attribute_parser(input: ParseData) -> IResult<ParseData, Excep
 }
 
 pub fn constant_value_attribute_parser(
-    input: ParseData,
+    i: ParseData,
 ) -> IResult<ParseData, ConstantValueAttribute> {
-    do_parse!(
-        input,
-        constant_value_index: be_u16
-            >> (ConstantValueAttribute {
-                constant_value_index,
-            })
-    )
+    let (i, constant_value_index) = constant_pool_index_raw(i)?;
+    Ok((i, ConstantValueAttribute {
+        constant_value_index
+    }))
 }
 
 fn bootstrap_method_parser(input: ParseData) -> IResult<ParseData, BootstrapMethod> {

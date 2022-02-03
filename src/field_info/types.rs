@@ -13,6 +13,14 @@ pub struct FieldInfo {
     pub attributes: SmallVec<[AttributeInfo; 2]>,
 }
 
+#[derive(Clone, Debug)]
+pub struct FieldInfoOpt {
+    pub access_flags: FieldAccessFlags,
+    pub name_index: ConstantPoolIndexRaw<Utf8Constant>,
+    pub descriptor_index: ConstantPoolIndexRaw<Utf8Constant>,
+    pub attributes_count: u16
+}
+
 bitflags! {
     pub struct FieldAccessFlags: u16 {
         const PUBLIC = 0x0001;     // 	Declared public; may be accessed from outside its package.

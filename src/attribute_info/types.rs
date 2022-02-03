@@ -3,7 +3,7 @@ use std::ops::Range;
 use smallvec::SmallVec;
 
 use crate::{
-    constant_info::{ClassConstant, Utf8Constant},
+    constant_info::{ClassConstant, Utf8Constant, ConstantInfo},
     constant_pool::ConstantPoolIndexRaw,
 };
 
@@ -124,7 +124,7 @@ pub struct ExceptionsAttribute {
 
 #[derive(Clone, Debug)]
 pub struct ConstantValueAttribute {
-    pub constant_value_index: u16,
+    pub constant_value_index: ConstantPoolIndexRaw<ConstantInfo>,
 }
 
 #[derive(Clone, Debug)]

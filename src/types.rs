@@ -1,17 +1,19 @@
 use std::borrow::Cow;
 use std::ops::Range;
 
+use nom::number::complete::be_u16;
 use smallvec::SmallVec;
 
 use crate::attribute_info::AttributeInfo;
-use crate::field_info::FieldInfo;
+use crate::constant_info::ConstantInfo;
+use crate::field_info::{FieldInfo, FieldInfoOpt, field_opt_value_parser};
 use crate::method_info::{
     attributes_search_parser, method_opt_parser, method_parser, skip_method_attributes_parser,
     skip_method_parser, MethodInfo, MethodInfoOpt,
 };
 
 use crate::parser::ParseData;
-use crate::util::{count_sv, skip_count};
+use crate::util::{count_sv, skip_count, constant_pool_index_raw};
 use crate::{
     constant_info::ClassConstant,
     constant_pool::{ConstantPool, ConstantPoolIndexRaw},
@@ -213,8 +215,42 @@ impl ClassFileOpt {
         let (_, info) =
             attributes_search_parser(input, data, &self.const_pool, name, method.attributes_count)
                 .map_err(|_| ())?;
+        let info = info.map(|x| x.1);
 
         Ok(info)
+    }
+
+    // TODO: provide actual error type
+    pub fn load_fields_values_iter<'a>(&'a self, data: &'a [u8]) -> 
+        impl Iterator<Item = Result<(FieldInfoOpt, Option<ConstantPoolIndexRaw<ConstantInfo>>), ()>> + 'a {
+        let start_pos = self.fields.start_pos();
+        let count = self.fields.count;
+        // TODO: use cached data if it exists
+
+        let mut p_input = ParseData::from_pos(data, start_pos);
+        let mut done = false;
+        let mut processed = 0;
+        std::iter::from_fn(move || {
+            if done {
+                return None;
+            } else if processed >= count {
+                done = true;
+                return None;
+            }
+
+            let i = p_input.clone();
+            
+            let (i, (field, value_index)) = if let Ok((i, f)) = field_opt_value_parser(i, data, &self.const_pool) {
+                (i, f)
+            } else {
+                return Some(Err(()));
+            };
+
+            p_input = i;
+            processed += 1;
+
+            Some(Ok((field, value_index)))
+        })
     }
 }
 
