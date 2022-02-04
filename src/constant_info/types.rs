@@ -67,6 +67,11 @@ impl Utf8Constant {
         self.data.is_empty()
     }
 
+    pub fn as_bytes<'a>(&self, class_file_data: &'a [u8]) -> &'a [u8] {
+        let i = ParseData::from_range(class_file_data, self.data.clone());
+        i.data()
+    }
+
     /// Converts the data to text
     /// Note that it uses the `to_text` method, so if you have a more explicit source of the bytes,
     /// then that may be better for you to use.
