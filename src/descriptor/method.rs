@@ -22,7 +22,7 @@ impl<'a> MethodDescriptor<'a> {
     // TODO: Settings that allow the parsing to be more permissive?
     /// Note: We currently don't uphold the JVM restriction of the method descriptor being at most
     /// 255 bytes.
-    pub fn parse(text: &'a str) -> Result<MethodDescriptor<'a>, MethodDescriptorError> {
+    pub fn parse(text: &'a [u8]) -> Result<MethodDescriptor<'a>, MethodDescriptorError> {
         // It may or may not be more efficient to inline these iterations
         // but this avoid duplicating parsing code.
         let mut iter = MethodDescriptor::parse_iter(text)?;
@@ -41,7 +41,7 @@ impl<'a> MethodDescriptor<'a> {
     }
 
     pub fn parse_iter(
-        text: &'a str,
+        text: &'a [u8],
     ) -> Result<MethodDescriptorParserIterator<'a>, MethodDescriptorError> {
         MethodDescriptorParserIterator::new(text)
     }
@@ -80,18 +80,18 @@ impl std::fmt::Display for MethodDescriptor<'_> {
 /// Note: If you want the return type, then you have to call `finish_return_type`
 #[derive(Clone)]
 pub struct MethodDescriptorParserIterator<'a> {
-    text: &'a str,
+    text: &'a [u8],
     got_all_parameters: bool,
     errored: bool,
     processed_parameters: usize,
 }
 impl<'a> MethodDescriptorParserIterator<'a> {
-    fn new(text: &'a str) -> Result<MethodDescriptorParserIterator<'a>, MethodDescriptorError> {
+    fn new(text: &'a [u8]) -> Result<MethodDescriptorParserIterator<'a>, MethodDescriptorError> {
         if text.is_empty() {
             return Err(MethodDescriptorError::Empty);
         }
 
-        if !text.starts_with('(') {
+        if !text.starts_with(b"(") {
             return Err(MethodDescriptorError::NoOpeningBracket);
         }
 
@@ -106,10 +106,9 @@ impl<'a> MethodDescriptorParserIterator<'a> {
     }
 
     pub fn finish_return_type(self) -> Result<Option<DescriptorType<'a>>, MethodDescriptorError> {
-        let ch = self.text.chars().next();
-        if let Some(ch) = ch {
+        if let Some(ch) = self.text.first().copied() {
             // Void is the expected type for returning nothing, but we transform it into `None`
-            if ch == 'V' {
+            if ch == b'V' {
                 Ok(None)
             } else {
                 // Otherwise, we try parsing it as a type
@@ -138,13 +137,13 @@ impl<'a> Iterator for MethodDescriptorParserIterator<'a> {
 
         let is_descriptor_type = self
             .text
-            .chars()
-            .next()
+            .first()
+            .copied()
             .map(DescriptorType::is_beginning_char)
             .unwrap_or(false);
         if !is_descriptor_type {
             self.got_all_parameters = true;
-            if !self.text.starts_with(')') {
+            if !self.text.starts_with(b")") {
                 self.errored = true;
                 return Some(Err(MethodDescriptorError::NoClosingBracket));
             }
@@ -174,6 +173,8 @@ impl<'a> Iterator for MethodDescriptorParserIterator<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use crate::descriptor::{
         method::{MethodDescriptor, MethodDescriptorError},
         types::{DescriptorTypeBasic, DescriptorTypeError},
@@ -182,43 +183,43 @@ mod tests {
     #[test]
     fn parsing() {
         assert_eq!(
-            MethodDescriptor::parse(""),
+            MethodDescriptor::parse(b""),
             Err(MethodDescriptorError::Empty)
         );
         assert_eq!(
-            MethodDescriptor::parse(")"),
+            MethodDescriptor::parse(b")"),
             Err(MethodDescriptorError::NoOpeningBracket)
         );
         assert_eq!(
-            MethodDescriptor::parse("("),
+            MethodDescriptor::parse(b"("),
             Err(MethodDescriptorError::NoClosingBracket)
         );
         assert_eq!(
-            MethodDescriptor::parse("()"),
+            MethodDescriptor::parse(b"()"),
             Err(MethodDescriptorError::NoReturnType)
         );
         assert_eq!(
-            MethodDescriptor::parse("()R"),
+            MethodDescriptor::parse(b"()R"),
             Err(MethodDescriptorError::ReturnTypeError(
                 DescriptorTypeError::InvalidTypeOpener
             ))
         );
         assert_eq!(
-            MethodDescriptor::parse("()V"),
+            MethodDescriptor::parse(b"()V"),
             Ok(MethodDescriptor {
                 parameter_types: Vec::new(),
                 return_type: None,
             })
         );
         assert_eq!(
-            MethodDescriptor::parse("(I)V"),
+            MethodDescriptor::parse(b"(I)V"),
             Ok(MethodDescriptor {
                 parameter_types: vec![DescriptorTypeBasic::Int.into()],
                 return_type: None,
             })
         );
         assert_eq!(
-            MethodDescriptor::parse("(IDJ)V"),
+            MethodDescriptor::parse(b"(IDJ)V"),
             Ok(MethodDescriptor {
                 parameter_types: vec![
                     DescriptorTypeBasic::Int.into(),
@@ -229,14 +230,16 @@ mod tests {
             })
         );
         assert_eq!(
-            MethodDescriptor::parse("(IDLjava/lang/Thread;)Ljava/lang/Object;"),
+            MethodDescriptor::parse(b"(IDLjava/lang/Thread;)Ljava/lang/Object;"),
             Ok(MethodDescriptor {
                 parameter_types: vec![
                     DescriptorTypeBasic::Int.into(),
                     DescriptorTypeBasic::Double.into(),
-                    DescriptorTypeBasic::ClassName("java/lang/Thread".into()).into()
+                    DescriptorTypeBasic::ClassName(Cow::Borrowed(b"java/lang/Thread")).into()
                 ],
-                return_type: Some(DescriptorTypeBasic::ClassName("java/lang/Object".into()).into()),
+                return_type: Some(
+                    DescriptorTypeBasic::ClassName(Cow::Borrowed(b"java/lang/Object")).into()
+                ),
             })
         );
     }

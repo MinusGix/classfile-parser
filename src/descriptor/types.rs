@@ -30,7 +30,7 @@ pub enum DescriptorTypeBasic<'a> {
     /// J long
     Long,
     /// L*class name here*; reference to the class
-    ClassName(Cow<'a, str>),
+    ClassName(Cow<'a, [u8]>),
     /// S short
     Short,
     /// Z boolean
@@ -53,8 +53,11 @@ impl<'a> From<DescriptorTypeBasic<'a>> for DescriptorType<'a> {
     }
 }
 impl<'a> DescriptorType<'a> {
-    pub(crate) fn is_beginning_char(c: char) -> bool {
-        matches!(c, 'B' | 'C' | 'D' | 'F' | 'I' | 'J' | 'L' | 'S' | 'Z' | '[')
+    pub(crate) fn is_beginning_char(c: u8) -> bool {
+        matches!(
+            c,
+            b'B' | b'C' | b'D' | b'F' | b'I' | b'J' | b'L' | b'S' | b'Z' | b'['
+        )
     }
 
     pub fn to_owned<'b>(self) -> DescriptorType<'b> {
@@ -67,13 +70,15 @@ impl<'a> DescriptorType<'a> {
         }
     }
 
-    pub fn parse(mut text: &'a str) -> Result<(DescriptorType<'a>, &'a str), DescriptorTypeError> {
+    pub fn parse(
+        mut text: &'a [u8],
+    ) -> Result<(DescriptorType<'a>, &'a [u8]), DescriptorTypeError> {
         // We use bytes here because this lets us avoid the slightly expensive utf8 iteration
         // Which is thankfully correct since a utf8 character won't have parts that look like ASCII
         // which we use to detect the start and end of parts
         // Though, if this panics, then that means we did it incorrectly.
 
-        let mut iter = text.as_bytes().iter();
+        let mut iter = text.iter();
         let first = iter.next().ok_or(DescriptorTypeError::NoInput)?;
         let mut latest_index = 1;
 
@@ -153,7 +158,13 @@ impl Display for DescriptorTypeBasic<'_> {
             DescriptorTypeBasic::Float => f.write_str("float"),
             DescriptorTypeBasic::Int => f.write_str("int"),
             DescriptorTypeBasic::Long => f.write_str("long"),
-            DescriptorTypeBasic::ClassName(path) => f.write_str(path.as_ref()),
+            DescriptorTypeBasic::ClassName(path) => {
+                if let Ok(path) = std::str::from_utf8(&path) {
+                    f.write_str(path)
+                } else {
+                    f.write_str("[non-utf8 class name]")
+                }
+            }
             DescriptorTypeBasic::Short => f.write_str("short"),
             DescriptorTypeBasic::Boolean => f.write_str("boolean"),
         }
@@ -178,7 +189,7 @@ impl<'a> DescriptorTypeBasic<'a> {
     pub fn to_owned<'b>(self) -> DescriptorTypeBasic<'b> {
         match self {
             DescriptorTypeBasic::ClassName(x) => {
-                DescriptorTypeBasic::ClassName(Cow::Owned(x.to_string()))
+                DescriptorTypeBasic::ClassName(Cow::Owned(x.into_owned()))
             }
             DescriptorTypeBasic::Byte => DescriptorTypeBasic::Byte,
             DescriptorTypeBasic::Char => DescriptorTypeBasic::Char,
@@ -194,7 +205,7 @@ impl<'a> DescriptorTypeBasic<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::num::NonZeroUsize;
+    use std::{borrow::Cow, num::NonZeroUsize};
 
     use crate::descriptor::DescriptorTypeBasic;
 
@@ -205,114 +216,117 @@ mod tests {
         let one = NonZeroUsize::new(1).unwrap();
         let two = NonZeroUsize::new(2).unwrap();
         assert_eq!(
-            DescriptorType::parse("B")?,
-            (DescriptorTypeBasic::Byte.into(), "")
+            DescriptorType::parse(b"B")?,
+            (DescriptorTypeBasic::Byte.into(), b"" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("C")?,
-            (DescriptorTypeBasic::Char.into(), "")
+            DescriptorType::parse(b"C")?,
+            (DescriptorTypeBasic::Char.into(), b"" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("D")?,
-            (DescriptorTypeBasic::Double.into(), "")
+            DescriptorType::parse(b"D")?,
+            (DescriptorTypeBasic::Double.into(), b"" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("F")?,
-            (DescriptorTypeBasic::Float.into(), "")
+            DescriptorType::parse(b"F")?,
+            (DescriptorTypeBasic::Float.into(), b"" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("I")?,
-            (DescriptorTypeBasic::Int.into(), "")
+            DescriptorType::parse(b"I")?,
+            (DescriptorTypeBasic::Int.into(), b"" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("J")?,
-            (DescriptorTypeBasic::Long.into(), "")
+            DescriptorType::parse(b"J")?,
+            (DescriptorTypeBasic::Long.into(), b"" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("S")?,
-            (DescriptorTypeBasic::Short.into(), "")
+            DescriptorType::parse(b"S")?,
+            (DescriptorTypeBasic::Short.into(), b"" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("Z")?,
-            (DescriptorTypeBasic::Boolean.into(), "")
+            DescriptorType::parse(b"Z")?,
+            (DescriptorTypeBasic::Boolean.into(), b"" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("ZB")?,
-            (DescriptorTypeBasic::Boolean.into(), "B")
+            DescriptorType::parse(b"ZB")?,
+            (DescriptorTypeBasic::Boolean.into(), b"B" as &[u8])
         );
         assert_eq!(
-            DescriptorType::parse("ZBLjava/test;")?,
-            (DescriptorTypeBasic::Boolean.into(), "BLjava/test;")
+            DescriptorType::parse(b"ZBLjava/test;")?,
+            (
+                DescriptorTypeBasic::Boolean.into(),
+                b"BLjava/test;" as &[u8]
+            )
         );
 
         // Arrays
         assert_eq!(
-            DescriptorType::parse("["),
+            DescriptorType::parse(b"["),
             Err(DescriptorTypeError::NoInput)
         );
         assert_eq!(
-            DescriptorType::parse("[I")?,
+            DescriptorType::parse(b"[I")?,
             (
                 DescriptorType::Array {
                     level: one,
                     component: DescriptorTypeBasic::Int,
                 },
-                ""
+                b"" as &[u8]
             )
         );
         assert_eq!(
-            DescriptorType::parse("[IB")?,
+            DescriptorType::parse(b"[IB")?,
             (
                 DescriptorType::Array {
                     level: one,
                     component: DescriptorTypeBasic::Int,
                 },
-                "B"
+                b"B" as &[u8]
             )
         );
         assert_eq!(
-            DescriptorType::parse("[[I")?,
+            DescriptorType::parse(b"[[I")?,
             (
                 DescriptorType::Array {
                     level: two,
                     component: DescriptorTypeBasic::Int,
                 },
-                ""
+                b"" as &[u8]
             )
         );
         assert_eq!(
-            DescriptorType::parse("[[IB")?,
+            DescriptorType::parse(b"[[IB")?,
             (
                 DescriptorType::Array {
                     level: two,
                     component: DescriptorTypeBasic::Int
                 },
-                "B"
+                b"B" as &[u8]
             )
         );
 
         // Classes
         assert_eq!(
-            DescriptorType::parse("L"),
+            DescriptorType::parse(b"L"),
             Err(DescriptorTypeError::NoClassNameEnd)
         );
         assert_eq!(
-            DescriptorType::parse("L;"),
+            DescriptorType::parse(b"L;"),
             Err(DescriptorTypeError::EmptyClassName)
         );
         assert_eq!(
-            DescriptorType::parse("Ljava/util/Scanner;")?,
+            DescriptorType::parse(b"Ljava/util/Scanner;")?,
             (
-                DescriptorTypeBasic::ClassName("java/util/Scanner".into()).into(),
-                ""
+                DescriptorTypeBasic::ClassName(Cow::Borrowed(b"java/util/Scanner")).into(),
+                b"" as &[u8]
             )
         );
 
         assert_eq!(
-            DescriptorType::parse("Ljava/util;B[I")?,
+            DescriptorType::parse(b"Ljava/util;B[I")?,
             (
-                DescriptorTypeBasic::ClassName("java/util".into()).into(),
-                "B[I"
+                DescriptorTypeBasic::ClassName(Cow::Borrowed(b"java/util")).into(),
+                b"B[I" as &[u8]
             )
         );
         Ok(())
