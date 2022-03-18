@@ -6,14 +6,14 @@ use smallvec::SmallVec;
 
 use crate::attribute_info::AttributeInfo;
 use crate::constant_info::ConstantInfo;
-use crate::field_info::{FieldInfo, FieldInfoOpt, field_opt_value_parser};
+use crate::field_info::{field_opt_value_parser, FieldInfo, FieldInfoOpt};
 use crate::method_info::{
     attributes_search_parser, method_opt_parser, method_parser, skip_method_attributes_parser,
     skip_method_parser, MethodInfo, MethodInfoOpt,
 };
 
 use crate::parser::ParseData;
-use crate::util::{count_sv, skip_count, constant_pool_index_raw};
+use crate::util::{constant_pool_index_raw, count_sv, skip_count};
 use crate::{
     constant_info::ClassConstant,
     constant_pool::{ConstantPool, ConstantPoolIndexRaw},
@@ -123,10 +123,16 @@ pub struct ClassFileOpt {
 }
 impl ClassFileOpt {
     // TODO: Return more useful errors
-    
-    pub fn load_attribute_with_name(&self, data: &'a [u8], name: &str) -> Result<Option<Range<usize>>, LoadError> {
+
+    pub fn load_attribute_with_name(
+        &self,
+        data: &[u8],
+        name: &str,
+    ) -> Result<Option<Range<usize>>, LoadError> {
         let input = ParseData::from_pos(data, self.attributes.start_pos);
-        let (_, info) = attributes_search_parser(input, data, &self.const_pool, name, self.attributes.count).map_err(|_| LoadError::Unknown);
+        let (_, info) =
+            attributes_search_parser(input, data, &self.const_pool, name, self.attributes.count)
+                .map_err(|_| LoadError::Unknown)?;
 
         let info = info.map(|x| x.1);
 
@@ -147,9 +153,12 @@ impl ClassFileOpt {
 
         let start_pos = self.methods.start_pos();
         let input = ParseData::from_pos(data, start_pos);
-        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input).map_err(|_| LoadError::Unknown)?;
+        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input)
+            .map_err(|_| LoadError::Unknown)?;
 
-        method_parser(input).map_err(|_| LoadError::Unknown).map(|x| Cow::Owned(x.1))
+        method_parser(input)
+            .map_err(|_| LoadError::Unknown)
+            .map(|x| Cow::Owned(x.1))
     }
 
     /// Loads a method at a given index
@@ -168,9 +177,12 @@ impl ClassFileOpt {
 
         let start_pos = self.methods.start_pos();
         let input = ParseData::from_pos(data, start_pos);
-        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input).map_err(|_| LoadError::Unknown)?;
+        let (input, _) = skip_count(skip_method_parser, usize::from(index))(input)
+            .map_err(|_| LoadError::Unknown)?;
 
-        method_opt_parser(input).map_err(|_|LoadError::Unknown).map(|(_, method)| method)
+        method_opt_parser(input)
+            .map_err(|_| LoadError::Unknown)
+            .map(|(_, method)| method)
     }
 
     /// This is guaranteed to be in order
@@ -195,7 +207,8 @@ impl ClassFileOpt {
 
         let start_pos = self.methods.start_pos();
         let input = ParseData::from_pos(data, start_pos);
-        let (_, methods) = count_sv(method_parser, usize::from(self.methods.len()))(input).map_err(|_| LoadError::Unknown)?;
+        let (_, methods) = count_sv(method_parser, usize::from(self.methods.len()))(input)
+            .map_err(|_| LoadError::Unknown)?;
 
         self.methods.fill(methods);
 
@@ -214,8 +227,8 @@ impl ClassFileOpt {
             // TODO: This could do slightly better
             let start_pos = self.methods.start_pos();
             let input = ParseData::from_pos(data, start_pos);
-            let (input, _) =
-                skip_count(skip_method_parser, usize::from(index))(input).map_err(|_| LoadError::Unknown)?;
+            let (input, _) = skip_count(skip_method_parser, usize::from(index))(input)
+                .map_err(|_| LoadError::Unknown)?;
 
             method_opt_parser(input)
                 .ok()
@@ -233,8 +246,12 @@ impl ClassFileOpt {
     }
 
     // TODO: provide actual error type
-    pub fn load_fields_values_iter<'a>(&'a self, data: &'a [u8]) -> 
-        impl Iterator<Item = Result<(FieldInfoOpt, Option<ConstantPoolIndexRaw<ConstantInfo>>), LoadError>> + 'a {
+    pub fn load_fields_values_iter<'a>(
+        &'a self,
+        data: &'a [u8],
+    ) -> impl Iterator<
+        Item = Result<(FieldInfoOpt, Option<ConstantPoolIndexRaw<ConstantInfo>>), LoadError>,
+    > + 'a {
         let start_pos = self.fields.start_pos();
         let count = self.fields.count;
         // TODO: use cached data if it exists
@@ -251,12 +268,13 @@ impl ClassFileOpt {
             }
 
             let i = p_input.clone();
-            
-            let (i, (field, value_index)) = if let Ok((i, f)) = field_opt_value_parser(i, data, &self.const_pool) {
-                (i, f)
-            } else {
-                return Some(Err(LoadError::Unknown));
-            };
+
+            let (i, (field, value_index)) =
+                if let Ok((i, f)) = field_opt_value_parser(i, data, &self.const_pool) {
+                    (i, f)
+                } else {
+                    return Some(Err(LoadError::Unknown));
+                };
 
             p_input = i;
             processed += 1;
