@@ -4,6 +4,7 @@ extern crate nom;
 use classfile_parser::attribute_info::bootstrap_methods_attribute_parser;
 use classfile_parser::class_parser;
 use classfile_parser::constant_info::ConstantInfo;
+use classfile_parser::constant_pool::ConstantPoolIndexRaw;
 use classfile_parser::parser::ParseData;
 
 #[test]
@@ -44,7 +45,7 @@ fn test_attribute_bootstrap_methods() {
                         Result::Ok((_, bsma)) => {
                             assert_eq!(bsma.num_bootstrap_methods, 1);
                             let bsm = &bsma.bootstrap_methods[0];
-                            assert_eq!(bsm.bootstrap_method_ref, 36);
+                            assert_eq!(bsm.bootstrap_method_ref, ConstantPoolIndexRaw::new(36));
 
                             println!("{:?}", bsm);
                             println!("\tmethod ref: {:?}", c.const_pool.get(36));

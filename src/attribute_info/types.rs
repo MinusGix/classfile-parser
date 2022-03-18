@@ -3,7 +3,7 @@ use std::ops::Range;
 use smallvec::SmallVec;
 
 use crate::{
-    constant_info::{ClassConstant, Utf8Constant, ConstantInfo},
+    constant_info::{ClassConstant, ConstantInfo, MethodHandleConstant, Utf8Constant},
     constant_pool::ConstantPoolIndexRaw,
 };
 
@@ -129,9 +129,9 @@ pub struct ConstantValueAttribute {
 
 #[derive(Clone, Debug)]
 pub struct BootstrapMethod {
-    pub bootstrap_method_ref: u16,
+    pub bootstrap_method_ref: ConstantPoolIndexRaw<MethodHandleConstant>,
     pub num_bootstrap_arguments: u16,
-    pub bootstrap_arguments: Vec<u16>,
+    pub bootstrap_arguments: Vec<ConstantPoolIndexRaw<ConstantInfo>>,
 }
 
 #[derive(Clone, Debug)]

@@ -1,5 +1,6 @@
 use nom::bytes::complete::take;
 use nom::error::ErrorKind;
+use nom::multi::count;
 use nom::number::complete::{be_u16, be_u32, be_u8};
 use nom::{Err, IResult, Slice};
 
@@ -259,27 +260,40 @@ pub fn exceptions_attribute_parser(input: ParseData) -> IResult<ParseData, Excep
     )
 }
 
-pub fn constant_value_attribute_parser(
-    i: ParseData,
-) -> IResult<ParseData, ConstantValueAttribute> {
+pub fn constant_value_attribute_parser(i: ParseData) -> IResult<ParseData, ConstantValueAttribute> {
     let (i, constant_value_index) = constant_pool_index_raw(i)?;
-    Ok((i, ConstantValueAttribute {
-        constant_value_index
-    }))
+    Ok((
+        i,
+        ConstantValueAttribute {
+            constant_value_index,
+        },
+    ))
 }
 
-fn bootstrap_method_parser(input: ParseData) -> IResult<ParseData, BootstrapMethod> {
-    do_parse!(
-        input,
-        bootstrap_method_ref: be_u16
-            >> num_bootstrap_arguments: be_u16
-            >> bootstrap_arguments: count!(be_u16, num_bootstrap_arguments as usize)
-            >> (BootstrapMethod {
-                bootstrap_method_ref,
-                num_bootstrap_arguments,
-                bootstrap_arguments,
-            })
-    )
+fn bootstrap_method_parser(i: ParseData) -> IResult<ParseData, BootstrapMethod> {
+    let (i, bootstrap_method_ref) = constant_pool_index_raw(i)?;
+    let (i, num_bootstrap_arguments) = be_u16(i)?;
+    let (i, bootstrap_arguments) =
+        count(constant_pool_index_raw, num_bootstrap_arguments as usize)(i)?;
+    Ok((
+        i,
+        BootstrapMethod {
+            bootstrap_method_ref,
+            num_bootstrap_arguments,
+            bootstrap_arguments,
+        },
+    ))
+    // do_parse!(
+    //     input,
+    //     bootstrap_method_ref: be_u16
+    //         >> num_bootstrap_arguments: be_u16
+    //         >> bootstrap_arguments: count!(be_u16, num_bootstrap_arguments as usize)
+    //         >> (BootstrapMethod {
+    //             bootstrap_method_ref,
+    //             num_bootstrap_arguments,
+    //             bootstrap_arguments,
+    //         })
+    // )
 }
 
 pub fn bootstrap_methods_attribute_parser(
