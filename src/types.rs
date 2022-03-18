@@ -123,7 +123,15 @@ pub struct ClassFileOpt {
 }
 impl ClassFileOpt {
     // TODO: Return more useful errors
-    // TODO: Methods for loading class file attributes
+    
+    pub fn load_attribute_with_name(&self, data: &'a [u8], name: &str) -> Result<Option<Range<usize>>, LoadError> {
+        let input = ParseData::from_pos(data, self.attributes.start_pos);
+        let (_, info) = attributes_search_parser(input, data, &self.const_pool, name, self.attributes.count).map_err(|_| LoadError::Unknown);
+
+        let info = info.map(|x| x.1);
+
+        Ok(info)
+    }
 
     /// Loads a method at a given index
     /// Returns the value in cache if there was one
