@@ -7,7 +7,7 @@ use std::{
 use crate::constant_info::ConstantInfo;
 
 /// An index into the constant pool that hasn't been offset by -1
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct ConstantPoolIndexRaw<T>(pub u16, PhantomData<*const T>);
 impl<T> ConstantPoolIndexRaw<T> {
     pub fn new(i: u16) -> Self {
@@ -37,7 +37,7 @@ impl<T: TryFrom<ConstantInfo>> ConstantPoolIndexRaw<T> {
 }
 
 /// A constant pool index that has already been offset by -1
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Hash)]
 pub struct ConstantPoolIndex<T>(pub u16, PhantomData<*const T>);
 impl<T> ConstantPoolIndex<T> {
     pub fn new(i: u16) -> Self {
@@ -53,6 +53,12 @@ impl<T> Copy for ConstantPoolIndex<T> {}
 impl<T: TryFrom<ConstantInfo>> ConstantPoolIndex<T> {
     pub fn into_generic(self) -> ConstantPoolIndex<ConstantInfo> {
         ConstantPoolIndex(self.0, PhantomData)
+    }
+}
+impl<T> Eq for ConstantPoolIndex<T> {}
+impl<T> PartialEq for ConstantPoolIndex<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
     }
 }
 
