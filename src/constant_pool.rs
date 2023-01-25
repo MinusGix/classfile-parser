@@ -1,5 +1,6 @@
 use std::{
     convert::{TryFrom, TryInto},
+    hash::Hash,
     marker::PhantomData,
     rc::Rc,
 };
@@ -7,7 +8,7 @@ use std::{
 use crate::constant_info::ConstantInfo;
 
 /// An index into the constant pool that hasn't been offset by -1
-#[derive(Debug, Hash)]
+#[derive(Debug)]
 pub struct ConstantPoolIndexRaw<T>(pub u16, PhantomData<*const T>);
 impl<T> ConstantPoolIndexRaw<T> {
     pub fn new(i: u16) -> Self {
@@ -24,6 +25,11 @@ impl<T> PartialEq for ConstantPoolIndexRaw<T> {
         self.0.eq(&other.0)
     }
 }
+impl<T> Hash for ConstantPoolIndexRaw<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
+    }
+}
 impl<T> Clone for ConstantPoolIndexRaw<T> {
     fn clone(&self) -> Self {
         Self::new(self.0)
@@ -37,7 +43,7 @@ impl<T: TryFrom<ConstantInfo>> ConstantPoolIndexRaw<T> {
 }
 
 /// A constant pool index that has already been offset by -1
-#[derive(Debug, Hash)]
+#[derive(Debug)]
 pub struct ConstantPoolIndex<T>(pub u16, PhantomData<*const T>);
 impl<T> ConstantPoolIndex<T> {
     pub fn new(i: u16) -> Self {
@@ -59,6 +65,11 @@ impl<T> Eq for ConstantPoolIndex<T> {}
 impl<T> PartialEq for ConstantPoolIndex<T> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
+    }
+}
+impl<T> Hash for ConstantPoolIndex<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
     }
 }
 
